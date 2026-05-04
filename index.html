@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pioneer SoundSpace</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #0b2a4a;
+      color: white;
+      text-align: center;
+      margin: 0;
+    }
+
+    header {
+      background-color: white;
+      color: #0b2a4a;
+      padding: 15px;
+    }
+
+    header img {
+      height: 60px;
+      vertical-align: middle;
+    }
+
+    header h1 {
+      display: inline;
+      margin-left: 15px;
+      font-size: 28px;
+    }
+
+    .master-now-playing {
+      background: #163d63;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .master-now-playing span {
+      font-weight: normal;
+    }
+
+    .controls {
+      margin: 15px;
+    }
+
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .class-box {
+      background: white;
+      color: #0b2a4a;
+      border-radius: 12px;
+      padding: 15px;
+      margin: 15px;
+      width: 260px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .class-title {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+
+    select {
+      width: 90%;
+      padding: 8px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    iframe {
+      width: 100%;
+      height: 150px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    .now-playing {
+      margin-top: 8px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .now-playing span {
+      font-weight: normal;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <img src="logo.png" alt="School Logo">
+  <h1>Pioneer SoundSpace 🎧</h1>
+</header>
+
+<div class="master-now-playing" id="masterNowPlaying">
+  🎶 Now Playing: <span>Nothing</span>
+</div>
+
+<div class="controls">
+  <label>
+    <input type="checkbox" id="singleMode">
+    🎚️ Single Player Mode (only one class plays at a time)
+  </label>
+</div>
+
+<div class="container" id="classes"></div>
+
+<script>
+const classes = [
+  {name: "Class 1 - Kangaroos 🦘"},
+  {name: "Class 2 - Bilby 🐭"},
+  {name: "Class 3 - Swans 🦢"},
+  {name: "Class 4 - Numbats 🐾"},
+  {name: "Class 5 - Bobtails 🦎"},
+  {name: "Class 6 - Karak 🦅"},
+  {name: "Class 7 - Wombats 🐻"}
+];
+
+// EDIT SONGS HERE
+const songs = [
+  {name: "Lo-fi Beats", url: "https://www.youtube.com/embed/jfKfPfyJRdk"},
+  {name: "Relaxing Piano", url: "https://www.youtube.com/embed/1ZYbU82GVz4"},
+  {name: "Instrumental Study", url: "https://www.youtube.com/embed/5qap5aO4i9A"}
+];
+
+const container = document.getElementById("classes");
+const masterNowPlaying = document.getElementById("masterNowPlaying");
+
+const iframes = [];
+const nowPlayingLabels = [];
+
+function updateMasterNowPlaying(text) {
+  masterNowPlaying.innerHTML = "🎶 Now Playing: <span>" + text + "</span>";
+}
+
+classes.forEach((classItem) => {
+  const div = document.createElement("div");
+  div.className = "class-box";
+
+  const title = document.createElement("div");
+  title.className = "class-title";
+  title.innerText = classItem.name;
+
+  const select = document.createElement("select");
+  const iframe = document.createElement("iframe");
+  const nowPlaying = document.createElement("div");
+
+  nowPlaying.className = "now-playing";
+  nowPlaying.innerHTML = "Now Playing: <span>Nothing</span>";
+
+  iframes.push(iframe);
+  nowPlayingLabels.push(nowPlaying);
+
+  const defaultOption = document.createElement("option");
+  defaultOption.text = "Select music";
+  defaultOption.value = "";
+  select.add(defaultOption);
+
+  songs.forEach(song => {
+    const option = document.createElement("option");
+    option.text = song.name;
+    option.value = song.url;
+    select.add(option);
+  });
+
+  select.addEventListener("change", function() {
+
+    const singleMode = document.getElementById("singleMode").checked;
+
+    if (singleMode) {
+      iframes.forEach(frame => frame.src = "");
+      nowPlayingLabels.forEach(label => {
+        label.innerHTML = "Now Playing: <span>Nothing</span>";
+      });
+      updateMasterNowPlaying("Nothing");
+    }
+
+    if (this.value) {
+      const songName = this.options[this.selectedIndex].text;
+
+      iframe.src = this.value + "?autoplay=1";
+      nowPlaying.innerHTML = "Now Playing: <span>" + songName + "</span>";
+      updateMasterNowPlaying(songName + " (" + classItem.name + ")");
+    } else {
+      iframe.src = "";
+      nowPlaying.innerHTML = "Now Playing: <span>Nothing</span>";
+      updateMasterNowPlaying("Nothing");
+    }
+  });
+
+  div.appendChild(title);
+  div.appendChild(select);
+  div.appendChild(iframe);
+  div.appendChild(nowPlaying);
+
+  container.appendChild(div);
+});
+</script>
+
+</body>
+</html>
