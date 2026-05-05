@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="has-player-bar">
 
 <header class="site-header">
   <div class="header-left">
@@ -31,22 +31,6 @@
   <h2 class="page-title" id="classTitle">Class</h2>
   <p class="page-subtitle">Add YouTube links to build a playlist for this class.</p>
 
-  <section class="now-playing" id="nowPlaying" aria-live="polite">
-    <div class="now-playing-label">Now Playing</div>
-    <div class="now-playing-title" id="nowPlayingTitle">Nothing playing yet</div>
-  </section>
-
-  <div class="player-wrap" id="playerWrap">
-    <div class="player-placeholder" id="playerPlaceholder">No song playing yet — add a link or press play below.</div>
-    <div id="player" style="display:none;"></div>
-  </div>
-
-  <div class="player-controls" id="playerControls" style="display:none;">
-    <button class="btn btn-navy btn-lg" id="prevBtn" onclick="prev()">⏮ Previous</button>
-    <button class="btn btn-navy btn-lg" id="nextBtn" onclick="next()">Next ⏭</button>
-    <button class="btn btn-outline btn-lg" id="shuffleBtn" onclick="toggleShuffle()">Shuffle: Off</button>
-  </div>
-
   <div class="panel">
     <h3>Add a Song</h3>
     <div class="controls">
@@ -56,10 +40,35 @@
   </div>
 
   <div class="panel">
-    <h3>Playlist</h3>
+    <div class="panel-head">
+      <h3>Playlist</h3>
+      <button class="btn btn-outline btn-sm" id="shuffleBtn" onclick="toggleShuffle()">Shuffle: Off</button>
+    </div>
     <div id="playlist"></div>
   </div>
 </main>
+
+<div id="hiddenPlayerWrap" aria-hidden="true">
+  <div id="player"></div>
+</div>
+
+<div id="playerBar" class="player-bar" role="region" aria-label="Now playing">
+  <div class="player-bar-info">
+    <div class="player-bar-thumb" id="playerBarThumb" aria-hidden="true"></div>
+    <div class="player-bar-text">
+      <div class="player-bar-label">Now Playing</div>
+      <div class="player-bar-title" id="nowPlaying">Nothing playing</div>
+    </div>
+  </div>
+  <div class="player-bar-controls">
+    <button class="player-bar-btn" id="prevBtn" onclick="prev()" aria-label="Previous">⏮</button>
+    <button class="player-bar-btn player-bar-btn-primary" id="playBtn" onclick="togglePlay()" aria-label="Play/Pause">▶</button>
+    <button class="player-bar-btn" id="nextBtn" onclick="next()" aria-label="Next">⏭</button>
+  </div>
+  <div class="player-bar-progress" aria-hidden="true">
+    <div class="player-bar-progress-fill" id="progressFill"></div>
+  </div>
+</div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
@@ -94,6 +103,8 @@ let currentIndex = -1;
 let ytPlayer = null;
 let ytReady = false;
 let pendingPlay = null;
+let isPlaying = false;
+let progressTimer = null;
 
 function save() {
   localStorage.setItem(storageKey, JSON.stringify(playlist));
@@ -166,18 +177,19 @@ function deleteSong(index) {
   playlist.splice(index, 1);
   if (wasPlaying) {
     currentIndex = -1;
+    isPlaying = false;
     if (ytPlayer && ytPlayer.stopVideo) {
       try { ytPlayer.stopVideo(); } catch (e) {}
     }
-    document.getElementById("player").style.display = "none";
-    document.getElementById("playerPlaceholder").style.display = "block";
-    document.getElementById("playerControls").style.display = "none";
+    stopProgressTimer();
+    setProgress(0);
   } else if (index < currentIndex) {
     currentIndex--;
   }
   save();
   render();
   updateNowPlaying();
+  updatePlayButton();
 }
 
 function onYouTubeIframeAPIReady() {
@@ -192,23 +204,16 @@ function onYouTubeIframeAPIReady() {
 function play(index) {
   if (!playlist.length || index < 0 || index >= playlist.length) return;
   currentIndex = index;
-  const placeholder = document.getElementById("playerPlaceholder");
-  const playerEl = document.getElementById("player");
-  const controls = document.getElementById("playerControls");
 
   if (!ytReady) {
     pendingPlay = index;
     return;
   }
 
-  placeholder.style.display = "none";
-  playerEl.style.display = "block";
-  controls.style.display = "flex";
-
   if (!ytPlayer) {
     ytPlayer = new YT.Player("player", {
-      width: "100%",
-      height: "420",
+      width: "0",
+      height: "0",
       videoId: playlist[index].id,
       playerVars: {
         autoplay: 1,
@@ -218,28 +223,55 @@ function play(index) {
       },
       events: {
         onReady: function(e) { e.target.playVideo(); },
-        onStateChange: function(e) { if (e.data === YT.PlayerState.ENDED) next(); }
+        onStateChange: onPlayerStateChange
       }
     });
   } else {
     ytPlayer.loadVideoById(playlist[index].id);
   }
 
+  isPlaying = true;
   render();
   updateNowPlaying();
+  updatePlayButton();
+  startProgressTimer();
+}
 
-  const wrap = document.getElementById("playerWrap");
-  if (wrap && wrap.scrollIntoView) {
-    wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+function onPlayerStateChange(e) {
+  if (e.data === YT.PlayerState.ENDED) {
+    next();
+    return;
   }
+  if (e.data === YT.PlayerState.PLAYING) {
+    isPlaying = true;
+    startProgressTimer();
+  } else if (e.data === YT.PlayerState.PAUSED) {
+    isPlaying = false;
+    stopProgressTimer();
+  }
+  updatePlayButton();
+}
+
+function togglePlay() {
+  if (currentIndex < 0) {
+    if (playlist.length) play(0);
+    return;
+  }
+  if (!ytPlayer) return;
+  try {
+    if (isPlaying) ytPlayer.pauseVideo();
+    else ytPlayer.playVideo();
+  } catch (e) {}
 }
 
 function toggleShuffle() {
   shuffle = !shuffle;
   const btn = document.getElementById("shuffleBtn");
-  if (btn) btn.innerText = "Shuffle: " + (shuffle ? "On" : "Off");
-  if (btn) btn.classList.toggle("btn-gold", shuffle);
-  if (btn) btn.classList.toggle("btn-outline", !shuffle);
+  if (btn) {
+    btn.innerText = "Shuffle: " + (shuffle ? "On" : "Off");
+    btn.classList.toggle("btn-gold", shuffle);
+    btn.classList.toggle("btn-outline", !shuffle);
+  }
 }
 
 function next() {
@@ -271,12 +303,53 @@ function escapeHtml(s) {
 }
 
 function updateNowPlaying() {
-  const el = document.getElementById("nowPlayingTitle");
-  if (!el) return;
+  const el = document.getElementById("nowPlaying");
+  const thumb = document.getElementById("playerBarThumb");
   if (currentIndex >= 0 && playlist[currentIndex]) {
-    el.innerText = playlist[currentIndex].title || "YouTube Video";
+    if (el) el.innerText = playlist[currentIndex].title || "YouTube Video";
+    if (thumb) {
+      thumb.style.backgroundImage = "url('" + thumbUrl(playlist[currentIndex].id) + "')";
+      thumb.classList.add("has-art");
+    }
   } else {
-    el.innerText = "Nothing playing yet";
+    if (el) el.innerText = "Nothing playing";
+    if (thumb) {
+      thumb.style.backgroundImage = "";
+      thumb.classList.remove("has-art");
+    }
+  }
+}
+
+function updatePlayButton() {
+  const btn = document.getElementById("playBtn");
+  if (!btn) return;
+  btn.innerText = isPlaying ? "⏸" : "▶";
+  btn.setAttribute("aria-label", isPlaying ? "Pause" : "Play");
+}
+
+function setProgress(ratio) {
+  const fill = document.getElementById("progressFill");
+  if (!fill) return;
+  const pct = Math.max(0, Math.min(1, ratio)) * 100;
+  fill.style.width = pct + "%";
+}
+
+function startProgressTimer() {
+  stopProgressTimer();
+  progressTimer = setInterval(() => {
+    if (!ytPlayer || !ytPlayer.getDuration) return;
+    try {
+      const d = ytPlayer.getDuration();
+      const t = ytPlayer.getCurrentTime();
+      if (d > 0) setProgress(t / d);
+    } catch (e) {}
+  }, 500);
+}
+
+function stopProgressTimer() {
+  if (progressTimer) {
+    clearInterval(progressTimer);
+    progressTimer = null;
   }
 }
 
@@ -291,26 +364,46 @@ function render() {
 
   playlist.forEach((song, i) => {
     const item = document.createElement("div");
-    item.className = "song-card" + (i === currentIndex ? " is-playing" : "");
+    item.className = "song-row" + (i === currentIndex ? " is-playing" : "");
+    item.setAttribute("role", "button");
+    item.setAttribute("tabindex", "0");
     item.innerHTML =
-      '<div class="song-thumb" onclick="play(' + i + ')">' +
+      '<div class="song-row-thumb">' +
         '<img src="' + thumbUrl(song.id) + '" alt="" loading="lazy">' +
-        '<span class="song-thumb-play" aria-hidden="true">▶</span>' +
+        '<span class="song-row-indicator" aria-hidden="true">' +
+          (i === currentIndex ? '<span class="eq"><i></i><i></i><i></i></span>' : '▶') +
+        '</span>' +
       '</div>' +
-      '<div class="song-info">' +
-        '<div class="song-card-title">' + escapeHtml(song.title) + '</div>' +
-        (i === currentIndex ? '<div class="song-card-status">Now playing</div>' : '') +
+      '<div class="song-row-info">' +
+        '<div class="song-row-title">' + escapeHtml(song.title) + '</div>' +
+        (i === currentIndex ? '<div class="song-row-status">Now playing</div>' : '') +
       '</div>' +
-      '<div class="song-actions">' +
-        '<button class="btn btn-navy btn-lg" onclick="play(' + i + ')">▶ Play</button>' +
-        '<button class="btn btn-danger btn-lg" onclick="deleteSong(' + i + ')">Remove</button>' +
-      '</div>';
+      '<button class="song-row-remove" aria-label="Remove" data-index="' + i + '">✕</button>';
+
+    item.addEventListener("click", (e) => {
+      if (e.target.closest(".song-row-remove")) return;
+      play(i);
+    });
+    item.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        play(i);
+      }
+    });
+    const removeBtn = item.querySelector(".song-row-remove");
+    if (removeBtn) {
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteSong(i);
+      });
+    }
     div.appendChild(item);
   });
 }
 
 render();
 updateNowPlaying();
+updatePlayButton();
 backfillTitles();
 </script>
 
