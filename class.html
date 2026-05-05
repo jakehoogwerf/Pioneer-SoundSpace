@@ -13,7 +13,7 @@
 <div class="controls">
   <input id="linkInput" placeholder="Paste YouTube link">
   <button onclick="addSong()">Add</button>
-  <button onclick="toggleShuffle()">🔀 Shuffle</button>
+  <button onclick="toggleShuffle()"> Shuffle</button>
 </div>
 
 <div id="playlist"></div>
@@ -86,7 +86,7 @@ function render() {
     item.innerHTML = `
       <button onclick="play(${i})">▶</button>
       <span>Song ${i+1}</span>
-      <button onclick="deleteSong(${i})">❌</button>
+      <button onclick="deleteSong(${i})"></button>
     `;
 
     div.appendChild(item);
