@@ -528,6 +528,12 @@ function render() {
     if (removeBtn) {
       removeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
+        const entered = window.prompt("Enter password to remove this song:");
+        if (entered === null) return;
+        if (entered !== "2222") {
+          window.alert("Incorrect password.");
+          return;
+        }
         deleteSong(i);
       });
     }
