@@ -31,17 +31,27 @@
   <h2 class="page-title" id="classTitle">Class</h2>
   <p class="page-subtitle">Add YouTube links to build a playlist for this class.</p>
 
+  <section class="now-playing" id="nowPlaying" aria-live="polite">
+    <div class="now-playing-label">Now Playing</div>
+    <div class="now-playing-title" id="nowPlayingTitle">Nothing playing yet</div>
+  </section>
+
   <div class="player-wrap" id="playerWrap">
     <div class="player-placeholder" id="playerPlaceholder">No song playing yet — add a link or press play below.</div>
-    <iframe id="player" allow="autoplay; encrypted-media" allowfullscreen style="display:none;"></iframe>
+    <div id="player" style="display:none;"></div>
+  </div>
+
+  <div class="player-controls" id="playerControls" style="display:none;">
+    <button class="btn btn-navy btn-lg" id="prevBtn" onclick="prev()">⏮ Previous</button>
+    <button class="btn btn-navy btn-lg" id="nextBtn" onclick="next()">Next ⏭</button>
+    <button class="btn btn-outline btn-lg" id="shuffleBtn" onclick="toggleShuffle()">Shuffle: Off</button>
   </div>
 
   <div class="panel">
     <h3>Add a Song</h3>
     <div class="controls">
-      <input id="linkInput" placeholder="Paste a YouTube link…">
-      <button class="btn btn-gold" onclick="addSong()">Add Song</button>
-      <button class="btn btn-outline" id="shuffleBtn" onclick="toggleShuffle()">Shuffle: Off</button>
+      <input id="linkInput" placeholder="Paste a YouTube link…" inputmode="url">
+      <button class="btn btn-gold btn-lg" onclick="addSong()">Add Song</button>
     </div>
   </div>
 
@@ -51,32 +61,60 @@
   </div>
 </main>
 
+<script src="https://www.youtube.com/iframe_api"></script>
 <script>
 const params = new URLSearchParams(window.location.search);
-const className = params.get("class") || "default";
+const classParam = params.get("class") || "default";
+const className = classParam;
+const storageKey = "playlist_" + className;
+const legacyKey = className;
 
 document.getElementById("classTitle").innerText =
-  className.charAt(0).toUpperCase() + className.slice(1);
+  className === "PE" ? "PE Class" : className.charAt(0).toUpperCase() + className.slice(1);
 
-let playlist = JSON.parse(localStorage.getItem(className)) || [];
+function loadPlaylist() {
+  const raw = localStorage.getItem(storageKey);
+  if (raw) {
+    try { return JSON.parse(raw) || []; } catch (e) { return []; }
+  }
+  const legacy = localStorage.getItem(legacyKey);
+  if (legacy && legacyKey !== storageKey) {
+    try {
+      const parsed = JSON.parse(legacy) || [];
+      localStorage.setItem(storageKey, JSON.stringify(parsed));
+      return parsed;
+    } catch (e) { return []; }
+  }
+  return [];
+}
+
+let playlist = loadPlaylist();
 let shuffle = false;
-let currentIndex = 0;
+let currentIndex = -1;
+let ytPlayer = null;
+let ytReady = false;
+let pendingPlay = null;
 
 function save() {
-  localStorage.setItem(className, JSON.stringify(playlist));
+  localStorage.setItem(storageKey, JSON.stringify(playlist));
 }
 
 function extractID(url) {
-  const regExp = /(?:youtube\.com.*v=|youtu\.be\/)([^&?/]+)/;
-  const match = url.match(regExp);
+  const trimmed = String(url).trim();
+  const regExp = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/;
+  const match = trimmed.match(regExp);
   return match ? match[1] : null;
+}
+
+function thumbUrl(id) {
+  return "https://img.youtube.com/vi/" + id + "/mqdefault.jpg";
 }
 
 async function fetchTitle(id) {
   try {
     const res = await fetch(
       "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=" +
-        id +
+        encodeURIComponent(id) +
         "&format=json"
     );
     if (!res.ok) return null;
@@ -88,16 +126,16 @@ async function fetchTitle(id) {
 }
 
 async function addSong() {
-  const input = document.getElementById("linkInput").value;
-  const id = extractID(input);
+  const inputEl = document.getElementById("linkInput");
+  const id = extractID(inputEl.value);
 
-  if (!id) return alert("Invalid YouTube link");
+  if (!id) { alert("Invalid YouTube link"); return; }
 
-  const song = { id: id, title: "Loading..." };
+  const song = { id: id, title: "Loading…" };
   playlist.push(song);
   save();
   render();
-  document.getElementById("linkInput").value = "";
+  inputEl.value = "";
 
   const title = await fetchTitle(id);
   song.title = title || "YouTube Video";
@@ -108,7 +146,7 @@ async function addSong() {
 async function backfillTitles() {
   let changed = false;
   for (const song of playlist) {
-    if (!song.title || song.title === "YouTube Video" || song.title === "Loading...") {
+    if (!song.title || song.title === "YouTube Video" || song.title === "Loading…" || song.title === "Loading...") {
       const title = await fetchTitle(song.id);
       if (title) {
         song.title = title;
@@ -119,45 +157,107 @@ async function backfillTitles() {
   if (changed) {
     save();
     render();
+    updateNowPlaying();
   }
 }
 
 function deleteSong(index) {
+  const wasPlaying = index === currentIndex;
   playlist.splice(index, 1);
+  if (wasPlaying) {
+    currentIndex = -1;
+    if (ytPlayer && ytPlayer.stopVideo) {
+      try { ytPlayer.stopVideo(); } catch (e) {}
+    }
+    document.getElementById("player").style.display = "none";
+    document.getElementById("playerPlaceholder").style.display = "block";
+    document.getElementById("playerControls").style.display = "none";
+  } else if (index < currentIndex) {
+    currentIndex--;
+  }
   save();
   render();
+  updateNowPlaying();
+}
+
+function onYouTubeIframeAPIReady() {
+  ytReady = true;
+  if (pendingPlay !== null) {
+    const i = pendingPlay;
+    pendingPlay = null;
+    play(i);
+  }
 }
 
 function play(index) {
-  if (!playlist.length) return;
-
+  if (!playlist.length || index < 0 || index >= playlist.length) return;
   currentIndex = index;
-  const player = document.getElementById("player");
   const placeholder = document.getElementById("playerPlaceholder");
-  player.src =
-    "https://www.youtube.com/embed/" +
-    playlist[index].id +
-    "?autoplay=1";
-  player.style.display = "block";
-  if (placeholder) placeholder.style.display = "none";
+  const playerEl = document.getElementById("player");
+  const controls = document.getElementById("playerControls");
+
+  if (!ytReady) {
+    pendingPlay = index;
+    return;
+  }
+
+  placeholder.style.display = "none";
+  playerEl.style.display = "block";
+  controls.style.display = "flex";
+
+  if (!ytPlayer) {
+    ytPlayer = new YT.Player("player", {
+      width: "100%",
+      height: "420",
+      videoId: playlist[index].id,
+      playerVars: {
+        autoplay: 1,
+        playsinline: 1,
+        rel: 0,
+        modestbranding: 1
+      },
+      events: {
+        onReady: function(e) { e.target.playVideo(); },
+        onStateChange: function(e) { if (e.data === YT.PlayerState.ENDED) next(); }
+      }
+    });
+  } else {
+    ytPlayer.loadVideoById(playlist[index].id);
+  }
+
   render();
+  updateNowPlaying();
+
+  const wrap = document.getElementById("playerWrap");
+  if (wrap && wrap.scrollIntoView) {
+    wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 function toggleShuffle() {
   shuffle = !shuffle;
   const btn = document.getElementById("shuffleBtn");
   if (btn) btn.innerText = "Shuffle: " + (shuffle ? "On" : "Off");
+  if (btn) btn.classList.toggle("btn-gold", shuffle);
+  if (btn) btn.classList.toggle("btn-outline", !shuffle);
 }
 
 function next() {
   if (!playlist.length) return;
-
-  if (shuffle) {
-    currentIndex = Math.floor(Math.random() * playlist.length);
+  if (shuffle && playlist.length > 1) {
+    let n = currentIndex;
+    while (n === currentIndex) n = Math.floor(Math.random() * playlist.length);
+    currentIndex = n;
   } else {
     currentIndex = (currentIndex + 1) % playlist.length;
   }
+  play(currentIndex);
+}
 
+function prev() {
+  if (!playlist.length) return;
+  if (currentIndex <= 0) currentIndex = playlist.length - 1;
+  else currentIndex--;
   play(currentIndex);
 }
 
@@ -168,6 +268,16 @@ function escapeHtml(s) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function updateNowPlaying() {
+  const el = document.getElementById("nowPlayingTitle");
+  if (!el) return;
+  if (currentIndex >= 0 && playlist[currentIndex]) {
+    el.innerText = playlist[currentIndex].title || "YouTube Video";
+  } else {
+    el.innerText = "Nothing playing yet";
+  }
 }
 
 function render() {
@@ -181,21 +291,26 @@ function render() {
 
   playlist.forEach((song, i) => {
     const item = document.createElement("div");
-    item.className = "song";
-    item.innerHTML = `
-      <button class="btn btn-navy btn-sm" onclick="play(${i})">▶ Play</button>
-      <span class="song-title">${escapeHtml(song.title)}</span>
-      <button class="btn btn-danger btn-sm" onclick="deleteSong(${i})">Remove</button>
-    `;
+    item.className = "song-card" + (i === currentIndex ? " is-playing" : "");
+    item.innerHTML =
+      '<div class="song-thumb" onclick="play(' + i + ')">' +
+        '<img src="' + thumbUrl(song.id) + '" alt="" loading="lazy">' +
+        '<span class="song-thumb-play" aria-hidden="true">▶</span>' +
+      '</div>' +
+      '<div class="song-info">' +
+        '<div class="song-card-title">' + escapeHtml(song.title) + '</div>' +
+        (i === currentIndex ? '<div class="song-card-status">Now playing</div>' : '') +
+      '</div>' +
+      '<div class="song-actions">' +
+        '<button class="btn btn-navy btn-lg" onclick="play(' + i + ')">▶ Play</button>' +
+        '<button class="btn btn-danger btn-lg" onclick="deleteSong(' + i + ')">Remove</button>' +
+      '</div>';
     div.appendChild(item);
   });
 }
 
-if (playlist.length > 0) {
-  play(0);
-}
-
 render();
+updateNowPlaying();
 backfillTitles();
 </script>
 
