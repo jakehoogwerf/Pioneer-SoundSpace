@@ -62,20 +62,54 @@ function extractID(url) {
   return match ? match[1] : null;
 }
 
-function addSong() {
+async function fetchTitle(id) {
+  try {
+    const res = await fetch(
+      "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=" +
+        id +
+        "&format=json"
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.title || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function addSong() {
   const input = document.getElementById("linkInput").value;
   const id = extractID(input);
 
   if (!id) return alert("Invalid YouTube link");
 
-  playlist.push({
-    id: id,
-    title: "YouTube Video"
-  });
-
+  const song = { id: id, title: "Loading..." };
+  playlist.push(song);
   save();
   render();
   document.getElementById("linkInput").value = "";
+
+  const title = await fetchTitle(id);
+  song.title = title || "YouTube Video";
+  save();
+  render();
+}
+
+async function backfillTitles() {
+  let changed = false;
+  for (const song of playlist) {
+    if (!song.title || song.title === "YouTube Video" || song.title === "Loading...") {
+      const title = await fetchTitle(song.id);
+      if (title) {
+        song.title = title;
+        changed = true;
+      }
+    }
+  }
+  if (changed) {
+    save();
+    render();
+  }
 }
 
 function deleteSong(index) {
@@ -136,6 +170,7 @@ if (playlist.length > 0) {
 }
 
 render();
+backfillTitles();
 </script>
 
 </body>
