@@ -1,0 +1,78 @@
+body {
+  font-family: Arial;
+  background: linear-gradient(135deg, #0b2a4a, #163d63);
+  color: white;
+  text-align: center;
+  margin: 0;
+}
+
+.title {
+  margin-top: 40px;
+  font-size: 40px;
+}
+
+.subtitle {
+  opacity: 0.8;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.card {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  padding: 30px;
+  margin: 15px;
+  border-radius: 15px;
+  text-decoration: none;
+  color: white;
+  font-size: 20px;
+  transition: 0.3s;
+}
+
+.card:hover {
+  background: rgba(255,255,255,0.2);
+  transform: scale(1.05);
+}
+
+.controls {
+  margin: 20px;
+}
+
+input {
+  padding: 10px;
+  width: 250px;
+}
+
+button {
+  padding: 10px;
+  margin: 5px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.song {
+  background: rgba(255,255,255,0.1);
+  margin: 10px auto;
+  padding: 10px;
+  width: 300px;
+  border-radius: 10px;
+}
+
+iframe {
+  width: 0;
+  height: 0;
+  border: none;
+}
+
+.back {
+  display: block;
+  margin: 10px;
+  text-decoration: none;
+  color: white;
+}
