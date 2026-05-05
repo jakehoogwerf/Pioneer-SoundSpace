@@ -228,6 +228,42 @@ body {
   outline: none;
   border-color: var(--navy);
 }
+.controls .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cooldown-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+  min-height: 14px;
+}
+
+.kbd-hint {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.kbd-hint kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-right: 4px;
+  font-family: 'Barlow', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+  background: white;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  line-height: 1.4;
+}
 
 .panel-head {
   display: flex;
@@ -430,6 +466,20 @@ body.has-player-bar { padding-bottom: 96px; }
 }
 .player-bar-thumb.has-art { border-color: rgba(200, 149, 42, 0.4); }
 .player-bar-text { min-width: 0; }
+.player-bar-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.eq-bar {
+  height: 14px;
+  flex-shrink: 0;
+  display: none;
+}
+.eq-bar.is-active { display: inline-flex; }
+.eq-bar i { background: var(--gold-lt); }
+.eq-bar:not(.is-playing) i { animation-play-state: paused; }
 .player-bar-label {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 10px;
@@ -452,6 +502,18 @@ body.has-player-bar { padding-bottom: 96px; }
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+}
+.player-bar-time {
+  font-family: 'Barlow', sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.02em;
+  margin-right: 6px;
+  white-space: nowrap;
+  min-width: 78px;
+  text-align: right;
 }
 .player-bar-btn {
   background: transparent;
@@ -517,4 +579,6 @@ body.has-player-bar { padding-bottom: 96px; }
   .player-bar-thumb { width: 36px; height: 36px; }
   .song-row-thumb { width: 48px; height: 36px; }
   .song-row { grid-template-columns: 48px 1fr auto; padding: 6px 8px; }
+  .player-bar-time { display: none; }
+  .kbd-hint { display: none; }
 }
