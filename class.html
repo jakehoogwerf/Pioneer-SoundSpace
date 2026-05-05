@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Class Player</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<a href="index.html" class="back">⬅ Back</a>
+
+<h1 id="classTitle"></h1>
+
+<div class="controls">
+  <input id="linkInput" placeholder="Paste YouTube link">
+  <button onclick="addSong()">Add</button>
+  <button onclick="toggleShuffle()">🔀 Shuffle</button>
+</div>
+
+<div id="playlist"></div>
+
+<iframe id="player"></iframe>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const className = params.get("class");
+
+document.getElementById("classTitle").innerText = className.toUpperCase();
+
+let playlist = JSON.parse(localStorage.getItem(className)) || [];
+let shuffle = false;
+let currentIndex = 0;
+
+function save() {
+  localStorage.setItem(className, JSON.stringify(playlist));
+}
+
+function extractID(url) {
+  const match = url.match(/v=([^&]+)/);
+  return match ? match[1] : null;
+}
+
+function addSong() {
+  const input = document.getElementById("linkInput").value;
+  const id = extractID(input);
+  if (!id) return alert("Invalid link");
+
+  playlist.push({id});
+  save();
+  render();
+}
+
+function deleteSong(index) {
+  playlist.splice(index, 1);
+  save();
+  render();
+}
+
+function play(index) {
+  currentIndex = index;
+  document.getElementById("player").src =
+    "https://www.youtube.com/embed/" + playlist[index].id + "?autoplay=1";
+}
+
+function toggleShuffle() {
+  shuffle = !shuffle;
+  alert("Shuffle " + (shuffle ? "ON" : "OFF"));
+}
+
+function next() {
+  if (shuffle) {
+    currentIndex = Math.floor(Math.random() * playlist.length);
+  } else {
+    currentIndex = (currentIndex + 1) % playlist.length;
+  }
+  play(currentIndex);
+}
+
+function render() {
+  const div = document.getElementById("playlist");
+  div.innerHTML = "";
+
+  playlist.forEach((song, i) => {
+    const item = document.createElement("div");
+    item.className = "song";
+
+    item.innerHTML = `
+      <button onclick="play(${i})">▶</button>
+      <span>Song ${i+1}</span>
+      <button onclick="deleteSong(${i})">❌</button>
+    `;
+
+    div.appendChild(item);
+  });
+}
+
+render();
+</script>
+
+</body>
+</html>
