@@ -1,0 +1,11 @@
+{
+  "name": "pvs-soundspace",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@netlify/blobs": "^9.0.0"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^4.0.0"
+  }
+}

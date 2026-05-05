@@ -85,29 +85,12 @@
 const params = new URLSearchParams(window.location.search);
 const classParam = params.get("class") || "default";
 const className = classParam;
-const storageKey = "playlist_" + className;
-const legacyKey = className;
+const apiUrl = "/api/playlist/" + encodeURIComponent(classParam);
 
 document.getElementById("classTitle").innerText =
   className === "PE" ? "PE Class" : className.charAt(0).toUpperCase() + className.slice(1);
 
-function loadPlaylist() {
-  const raw = localStorage.getItem(storageKey);
-  if (raw) {
-    try { return JSON.parse(raw) || []; } catch (e) { return []; }
-  }
-  const legacy = localStorage.getItem(legacyKey);
-  if (legacy && legacyKey !== storageKey) {
-    try {
-      const parsed = JSON.parse(legacy) || [];
-      localStorage.setItem(storageKey, JSON.stringify(parsed));
-      return parsed;
-    } catch (e) { return []; }
-  }
-  return [];
-}
-
-let playlist = loadPlaylist();
+let playlist = [];
 let shuffle = false;
 let currentIndex = -1;
 let ytPlayer = null;
@@ -117,11 +100,89 @@ let isPlaying = false;
 let progressTimer = null;
 
 const ADD_COOLDOWN_MS = 8000;
+const POLL_INTERVAL_MS = 6000;
 let lastAddTime = 0;
 let cooldownTimer = null;
+let saveInFlight = 0;
+let saveQueued = false;
+let pollTimer = null;
 
-function save() {
-  localStorage.setItem(storageKey, JSON.stringify(playlist));
+async function fetchRemotePlaylist() {
+  const res = await fetch(apiUrl, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load playlist");
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function save() {
+  saveQueued = true;
+  if (saveInFlight) return;
+  while (saveQueued) {
+    saveQueued = false;
+    saveInFlight++;
+    try {
+      const res = await fetch(apiUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(playlist)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        if (Array.isArray(saved) && !saveQueued) {
+          applyRemotePlaylist(saved);
+        }
+      }
+    } catch (e) {
+      // Network blip — next save or poll will reconcile.
+    } finally {
+      saveInFlight--;
+    }
+  }
+}
+
+function applyRemotePlaylist(next) {
+  const before = currentIndex >= 0 ? playlist[currentIndex] : null;
+  playlist = next;
+  if (before) {
+    const newIdx = playlist.findIndex(s => s.id === before.id);
+    currentIndex = newIdx;
+    if (newIdx === -1) {
+      currentIndex = -1;
+      isPlaying = false;
+      if (ytPlayer && ytPlayer.stopVideo) {
+        try { ytPlayer.stopVideo(); } catch (e) {}
+      }
+      stopProgressTimer();
+      setProgress(0);
+    }
+  }
+  render();
+  updateNowPlaying();
+  updatePlayButton();
+}
+
+async function pollRemote() {
+  if (saveInFlight || saveQueued) return;
+  if (document.hidden) return;
+  try {
+    const next = await fetchRemotePlaylist();
+    if (!playlistsEqual(playlist, next)) {
+      applyRemotePlaylist(next);
+    }
+  } catch (e) {}
+}
+
+function playlistsEqual(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id || a[i].title !== b[i].title) return false;
+  }
+  return true;
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollRemote, POLL_INTERVAL_MS);
 }
 
 function extractID(url) {
@@ -474,10 +535,20 @@ function render() {
   });
 }
 
-render();
-updateNowPlaying();
-updatePlayButton();
-backfillTitles();
+async function init() {
+  try {
+    playlist = await fetchRemotePlaylist();
+  } catch (e) {
+    playlist = [];
+  }
+  render();
+  updateNowPlaying();
+  updatePlayButton();
+  backfillTitles();
+  startPolling();
+}
+
+init();
 
 document.addEventListener("keydown", (e) => {
   const target = e.target;
