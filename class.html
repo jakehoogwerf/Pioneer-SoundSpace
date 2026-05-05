@@ -3,7 +3,27 @@
 <head>
   <title>Class Player</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .song {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    iframe {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 700px;
+      height: 400px;
+    }
+  </style>
 </head>
+
 <body>
 
 <a href="index.html" class="back">⬅ Back</a>
@@ -11,20 +31,21 @@
 <h1 id="classTitle"></h1>
 
 <div class="controls">
-  <input id="linkInput" placeholder="Paste YouTube link">
-  <button onclick="addSong()">Add</button>
-  <button onclick="toggleShuffle()"> Shuffle</button>
+  <input id="linkInput" placeholder="Paste YouTube link here">
+  <button onclick="addSong()">Add Song</button>
+  <button onclick="toggleShuffle()">Shuffle</button>
 </div>
 
 <div id="playlist"></div>
 
-<iframe id="player"></iframe>
+<iframe id="player" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 
 <script>
 const params = new URLSearchParams(window.location.search);
-const className = params.get("class");
+const className = params.get("class") || "default";
 
-document.getElementById("classTitle").innerText = className.toUpperCase();
+document.getElementById("classTitle").innerText =
+  className.charAt(0).toUpperCase() + className.slice(1);
 
 let playlist = JSON.parse(localStorage.getItem(className)) || [];
 let shuffle = false;
@@ -34,19 +55,27 @@ function save() {
   localStorage.setItem(className, JSON.stringify(playlist));
 }
 
+// Better YouTube ID extractor (supports all formats)
 function extractID(url) {
-  const match = url.match(/v=([^&]+)/);
+  const regExp = /(?:youtube\.com.*v=|youtu\.be\/)([^&?/]+)/;
+  const match = url.match(regExp);
   return match ? match[1] : null;
 }
 
 function addSong() {
   const input = document.getElementById("linkInput").value;
   const id = extractID(input);
-  if (!id) return alert("Invalid link");
 
-  playlist.push({id});
+  if (!id) return alert("Invalid YouTube link");
+
+  playlist.push({
+    id: id,
+    title: "YouTube Video"
+  });
+
   save();
   render();
+  document.getElementById("linkInput").value = "";
 }
 
 function deleteSong(index) {
@@ -56,22 +85,30 @@ function deleteSong(index) {
 }
 
 function play(index) {
+  if (!playlist.length) return;
+
   currentIndex = index;
+
   document.getElementById("player").src =
-    "https://www.youtube.com/embed/" + playlist[index].id + "?autoplay=1";
+    "https://www.youtube.com/embed/" +
+    playlist[index].id +
+    "?autoplay=1";
 }
 
 function toggleShuffle() {
   shuffle = !shuffle;
-  alert("Shuffle " + (shuffle ? "ON" : "OFF"));
+  alert("Shuffle is now " + (shuffle ? "ON" : "OFF"));
 }
 
 function next() {
+  if (!playlist.length) return;
+
   if (shuffle) {
     currentIndex = Math.floor(Math.random() * playlist.length);
   } else {
     currentIndex = (currentIndex + 1) % playlist.length;
   }
+
   play(currentIndex);
 }
 
@@ -84,13 +121,18 @@ function render() {
     item.className = "song";
 
     item.innerHTML = `
-      <button onclick="play(${i})">▶</button>
-      <span>Song ${i+1}</span>
-      <button onclick="deleteSong(${i})"></button>
+      <button onclick="play(${i})">▶ Play</button>
+      <span>${song.title}</span>
+      <button onclick="deleteSong(${i})">❌</button>
     `;
 
     div.appendChild(item);
   });
+}
+
+// Auto play first song if exists
+if (playlist.length > 0) {
+  play(0);
 }
 
 render();
