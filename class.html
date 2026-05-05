@@ -1,44 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Class Player</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PVS SoundSpace · Class Player</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <style>
-    .song {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 10px 0;
-    }
-
-    button {
-      cursor: pointer;
-    }
-
-    iframe {
-      margin-top: 20px;
-      width: 100%;
-      max-width: 700px;
-      height: 400px;
-    }
-  </style>
 </head>
-
 <body>
 
-<a href="index.html" class="back">⬅ Back</a>
+<header class="site-header">
+  <div class="header-left">
+    <div class="logo-wrap">
+      <img src="https://pvs.wa.edu.au/wp-content/uploads/2019/09/Pioneer-Village-School-Long.png" alt="Pioneer Village School">
+    </div>
+    <div class="hd"></div>
+    <div class="header-title">
+      <h1>PVS SOUNDSPACE</h1>
+      <p>Class Music Player</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <a class="btn btn-ghost" href="index.html">All Classes</a>
+  </div>
+</header>
+<div class="accent-bar"></div>
 
-<h1 id="classTitle"></h1>
+<main class="main">
+  <a href="index.html" class="back-link">← Back to classes</a>
+  <h2 class="page-title" id="classTitle">Class</h2>
+  <p class="page-subtitle">Add YouTube links to build a playlist for this class.</p>
 
-<div class="controls">
-  <input id="linkInput" placeholder="Paste YouTube link here">
-  <button onclick="addSong()">Add Song</button>
-  <button onclick="toggleShuffle()">Shuffle</button>
-</div>
+  <div class="player-wrap" id="playerWrap">
+    <div class="player-placeholder" id="playerPlaceholder">No song playing yet — add a link or press play below.</div>
+    <iframe id="player" allow="autoplay; encrypted-media" allowfullscreen style="display:none;"></iframe>
+  </div>
 
-<div id="playlist"></div>
+  <div class="panel">
+    <h3>Add a Song</h3>
+    <div class="controls">
+      <input id="linkInput" placeholder="Paste a YouTube link…">
+      <button class="btn btn-gold" onclick="addSong()">Add Song</button>
+      <button class="btn btn-outline" id="shuffleBtn" onclick="toggleShuffle()">Shuffle: Off</button>
+    </div>
+  </div>
 
-<iframe id="player" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+  <div class="panel">
+    <h3>Playlist</h3>
+    <div id="playlist"></div>
+  </div>
+</main>
 
 <script>
 const params = new URLSearchParams(window.location.search);
@@ -55,7 +66,6 @@ function save() {
   localStorage.setItem(className, JSON.stringify(playlist));
 }
 
-// Better YouTube ID extractor (supports all formats)
 function extractID(url) {
   const regExp = /(?:youtube\.com.*v=|youtu\.be\/)([^&?/]+)/;
   const match = url.match(regExp);
@@ -122,16 +132,21 @@ function play(index) {
   if (!playlist.length) return;
 
   currentIndex = index;
-
-  document.getElementById("player").src =
+  const player = document.getElementById("player");
+  const placeholder = document.getElementById("playerPlaceholder");
+  player.src =
     "https://www.youtube.com/embed/" +
     playlist[index].id +
     "?autoplay=1";
+  player.style.display = "block";
+  if (placeholder) placeholder.style.display = "none";
+  render();
 }
 
 function toggleShuffle() {
   shuffle = !shuffle;
-  alert("Shuffle is now " + (shuffle ? "ON" : "OFF"));
+  const btn = document.getElementById("shuffleBtn");
+  if (btn) btn.innerText = "Shuffle: " + (shuffle ? "On" : "Off");
 }
 
 function next() {
@@ -146,25 +161,36 @@ function next() {
   play(currentIndex);
 }
 
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function render() {
   const div = document.getElementById("playlist");
   div.innerHTML = "";
 
+  if (!playlist.length) {
+    div.innerHTML = '<div class="empty-state">No songs yet. Paste a YouTube link above to add one.</div>';
+    return;
+  }
+
   playlist.forEach((song, i) => {
     const item = document.createElement("div");
     item.className = "song";
-
     item.innerHTML = `
-      <button onclick="play(${i})">▶ Play</button>
-      <span>${song.title}</span>
-      <button onclick="deleteSong(${i})">❌</button>
+      <button class="btn btn-navy btn-sm" onclick="play(${i})">▶ Play</button>
+      <span class="song-title">${escapeHtml(song.title)}</span>
+      <button class="btn btn-danger btn-sm" onclick="deleteSong(${i})">Remove</button>
     `;
-
     div.appendChild(item);
   });
 }
 
-// Auto play first song if exists
 if (playlist.length > 0) {
   play(0);
 }
