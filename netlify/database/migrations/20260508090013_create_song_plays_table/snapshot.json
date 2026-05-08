@@ -1,0 +1,133 @@
+{
+  "version": "8",
+  "dialect": "postgres",
+  "id": "a8f6b3e7-de6d-430d-baae-855b64a9f3a8",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "ddl": [
+    {
+      "isRlsEnabled": false,
+      "name": "song_plays",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "song_plays"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "class_name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "song_plays"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "song_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "song_plays"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'YouTube Video'",
+      "generated": null,
+      "identity": null,
+      "name": "song_title",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "song_plays"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "play_count",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "song_plays"
+    },
+    {
+      "type": "timestamp",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "last_played_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "song_plays"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "class_name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "song_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "song_plays_class_song_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "song_plays"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "song_plays_pkey",
+      "schema": "public",
+      "table": "song_plays",
+      "entityType": "pks"
+    }
+  ],
+  "renames": []
+}
