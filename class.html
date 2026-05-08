@@ -83,6 +83,7 @@
         </div>
         <div class="teacher-btn-group">
           <button class="btn btn-danger btn-sm" id="pauseAllBtn" onclick="togglePauseAll()">Pause All</button>
+          <button class="btn btn-outline btn-sm" id="lockAllBtn" onclick="toggleLockAll()">🔒 Lock Playback</button>
         </div>
       </div>
     </div>
@@ -271,6 +272,7 @@ var progressTimer = null;
 var teacherMode = false;
 var selectedSongs = new Set();
 var classPaused = false;
+var classLocked = false;
 
 var lastAddTime = 0;
 var cooldownTimer = null;
@@ -811,7 +813,7 @@ function onYouTubeIframeAPIReady() {
 }
 
 function play(index) {
-  if (classPaused && !teacherMode) return;
+  if ((classPaused || classLocked) && !teacherMode) return;
   if (!playlist.length || index < 0 || index >= playlist.length) return;
   currentIndex = index;
 
@@ -865,7 +867,7 @@ function onPlayerStateChange(e) {
     return;
   }
   if (e.data === YT.PlayerState.PLAYING) {
-    if (classPaused && !teacherMode) {
+    if ((classPaused || classLocked) && !teacherMode) {
       try { ytPlayer.pauseVideo(); } catch (err) {}
       return;
     }
@@ -879,7 +881,7 @@ function onPlayerStateChange(e) {
 }
 
 function togglePlay() {
-  if (classPaused && !teacherMode) return;
+  if ((classPaused || classLocked) && !teacherMode) return;
   if (currentIndex < 0) {
     if (playlist.length) play(0);
     return;
@@ -1289,14 +1291,36 @@ function pasteSongs() {
 async function togglePauseAll() {
   var newState = !classPaused;
   try {
+    var payload = { paused: newState };
+    if (!newState) payload.locked = false;
     var res = await fetch(pauseApiUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paused: newState })
+      body: JSON.stringify(payload)
     });
     if (res.ok) {
       var data = await res.json();
       classPaused = data.paused;
+      classLocked = !!data.locked;
+      updatePauseUI();
+    }
+  } catch (e) {}
+}
+
+async function toggleLockAll() {
+  var newLocked = !classLocked;
+  try {
+    var payload = { locked: newLocked };
+    if (newLocked) payload.paused = true;
+    var res = await fetch(pauseApiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      var data = await res.json();
+      classPaused = !!data.paused;
+      classLocked = !!data.locked;
       updatePauseUI();
     }
   } catch (e) {}
@@ -1304,7 +1328,12 @@ async function togglePauseAll() {
 
 function updatePauseUI() {
   var btn = document.getElementById('pauseAllBtn');
+  var lockBtn = document.getElementById('lockAllBtn');
   var overlay = document.getElementById('pauseOverlay');
+  var overlayIcon = overlay ? overlay.querySelector('.pause-overlay-icon') : null;
+  var overlayTitle = overlay ? overlay.querySelector('h3') : null;
+  var overlayText = overlay ? overlay.querySelector('p') : null;
+
   if (btn) {
     btn.innerText = classPaused ? 'Resume All' : 'Pause All';
     if (classPaused) {
@@ -1315,13 +1344,50 @@ function updatePauseUI() {
       btn.classList.remove('btn-gold');
     }
   }
-  if (classPaused) {
-    if (ytPlayer && isPlaying) {
+  if (lockBtn) {
+    if (classLocked) {
+      lockBtn.innerText = '🔓 Unlock Playback';
+      lockBtn.classList.remove('btn-outline');
+      lockBtn.classList.add('btn-danger');
+    } else {
+      lockBtn.innerText = '🔒 Lock Playback';
+      lockBtn.classList.remove('btn-danger');
+      lockBtn.classList.add('btn-outline');
+    }
+  }
+  if (classPaused || classLocked) {
+    if (ytPlayer && isPlaying && !teacherMode) {
       try { ytPlayer.pauseVideo(); } catch (e) {}
     }
-    if (overlay && !teacherMode) overlay.style.display = '';
+    if (overlay && !teacherMode) {
+      overlay.style.display = '';
+      if (classLocked) {
+        if (overlayIcon) overlayIcon.textContent = '🔒';
+        if (overlayTitle) overlayTitle.textContent = 'Playback Locked';
+        if (overlayText) overlayText.textContent = 'Your teacher has locked playback for this class. Please wait until it is unlocked.';
+      } else {
+        if (overlayIcon) overlayIcon.textContent = '||';
+        if (overlayTitle) overlayTitle.textContent = 'Playback Paused';
+        if (overlayText) overlayText.textContent = 'Your teacher has paused playback for this class.';
+      }
+    }
   } else {
     if (overlay) overlay.style.display = 'none';
+  }
+
+  updatePlayerBarLock();
+}
+
+function updatePlayerBarLock() {
+  var locked = classLocked && !teacherMode;
+  var ids = ['playBtn', 'prevBtn', 'nextBtn', 'repeatBtn'];
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i]);
+    if (el) {
+      el.disabled = locked;
+      el.style.opacity = locked ? '0.4' : '';
+      el.style.pointerEvents = locked ? 'none' : '';
+    }
   }
 }
 
@@ -1331,11 +1397,13 @@ async function pollPauseState() {
     if (res.ok) {
       var data = await res.json();
       var wasPaused = classPaused;
+      var wasLocked = classLocked;
       classPaused = !!data.paused;
-      if (classPaused !== wasPaused) {
+      classLocked = !!data.locked;
+      if (classPaused !== wasPaused || classLocked !== wasLocked) {
         updatePauseUI();
       }
-      if (classPaused && !teacherMode && isPlaying && ytPlayer) {
+      if ((classPaused || classLocked) && !teacherMode && isPlaying && ytPlayer) {
         try { ytPlayer.pauseVideo(); } catch (e) {}
       }
     }
@@ -1354,15 +1422,15 @@ document.addEventListener('keydown', function(e) {
 
   if (e.code === 'Space' || e.key === ' ') {
     e.preventDefault();
-    if (classPaused && !teacherMode) return;
+    if ((classPaused || classLocked) && !teacherMode) return;
     togglePlay();
   } else if (e.key === 'ArrowRight') {
     e.preventDefault();
-    if (classPaused && !teacherMode) return;
+    if ((classPaused || classLocked) && !teacherMode) return;
     next();
   } else if (e.key === 'ArrowLeft') {
     e.preventDefault();
-    if (classPaused && !teacherMode) return;
+    if ((classPaused || classLocked) && !teacherMode) return;
     prev();
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();

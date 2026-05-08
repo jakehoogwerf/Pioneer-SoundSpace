@@ -21,8 +21,8 @@ export default async (req: Request, context: Context) => {
   const store = getStore({ name: 'class-pause-state', consistency: 'strong' })
 
   if (req.method === 'GET') {
-    const data = await store.get(className, { type: 'json' })
-    return Response.json(data || { paused: false })
+    const data = (await store.get(className, { type: 'json' })) as Record<string, unknown> | null
+    return Response.json({ paused: false, locked: false, ...data })
   }
 
   if (req.method === 'PUT') {
@@ -35,8 +35,11 @@ export default async (req: Request, context: Context) => {
     if (!body || typeof body !== 'object') {
       return new Response('Invalid body', { status: 400 })
     }
-    const paused = Boolean((body as Record<string, unknown>).paused)
-    const state = { paused }
+    const b = body as Record<string, unknown>
+    const existing = ((await store.get(className, { type: 'json' })) || {}) as Record<string, unknown>
+    const paused = 'paused' in b ? Boolean(b.paused) : Boolean(existing.paused)
+    const locked = 'locked' in b ? Boolean(b.locked) : Boolean(existing.locked)
+    const state = { paused, locked }
     await store.setJSON(className, state)
     return Response.json(state)
   }
