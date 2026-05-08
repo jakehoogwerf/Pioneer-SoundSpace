@@ -220,6 +220,15 @@
           </select>
         </div>
       </div>
+
+      <!-- Song Analytics -->
+      <div class="admin-section">
+        <h3>📊 Song Play Analytics</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px;">Real-time play counts for each class. Data refreshes every 10 seconds.</p>
+        <div id="analyticsContent">
+          <p style="color:var(--text-muted);font-size:13px;">Loading analytics...</p>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -444,10 +453,12 @@ function openAdmin() {
   }
   populateAdmin();
   document.getElementById('adminOverlay').style.display = '';
+  startAnalyticsPolling();
 }
 
 function closeAdmin() {
   document.getElementById('adminOverlay').style.display = 'none';
+  stopAnalyticsPolling();
 }
 
 function populateAdmin() {
@@ -835,6 +846,7 @@ function play(index) {
 
   isPlaying = true;
   addToRecentlyPlayed(playlist[index]);
+  trackSongPlay(playlist[index]);
   render();
   updateNowPlaying();
   updatePlayButton();
@@ -1371,6 +1383,101 @@ document.getElementById('linkInput').addEventListener('keydown', function(e) {
     addSong();
   }
 });
+
+/* ═══════════════════════════════════════════════
+   Analytics
+   ═══════════════════════════════════════════════ */
+function trackSongPlay(song) {
+  if (!song || !song.id) return;
+  fetch('/api/analytics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ class: classParam, songId: song.id, songTitle: song.title || 'YouTube Video' })
+  }).catch(function(){});
+}
+
+var analyticsTimer = null;
+
+function startAnalyticsPolling() {
+  if (analyticsTimer) clearInterval(analyticsTimer);
+  loadAllAnalytics();
+  analyticsTimer = setInterval(loadAllAnalytics, 10000);
+}
+
+function stopAnalyticsPolling() {
+  if (analyticsTimer) { clearInterval(analyticsTimer); analyticsTimer = null; }
+}
+
+async function loadAllAnalytics() {
+  var container = document.getElementById('analyticsContent');
+  if (!container) return;
+  try {
+    var promises = ALL_CLASSES.map(function(cls) {
+      return fetch('/api/analytics?class=' + encodeURIComponent(cls), { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .catch(function() { return []; });
+    });
+    var results = await Promise.all(promises);
+    renderAnalytics(results);
+  } catch(e) {
+    container.innerHTML = '<p style="color:var(--text-muted);">Could not load analytics.</p>';
+  }
+}
+
+function renderAnalytics(results) {
+  var container = document.getElementById('analyticsContent');
+  if (!container) return;
+
+  var html = '';
+  for (var i = 0; i < ALL_CLASSES.length; i++) {
+    var cls = ALL_CLASSES[i];
+    var songs = results[i] || [];
+    var displayName = cls === 'PE' ? 'PE Class' : cls.charAt(0).toUpperCase() + cls.slice(1);
+    var totalPlays = 0;
+    for (var s = 0; s < songs.length; s++) totalPlays += (songs[s].playCount || songs[s].play_count || 0);
+
+    html += '<div class="analytics-class">';
+    html += '<div class="analytics-class-header" onclick="toggleAnalyticsClass(this)">';
+    html += '<span class="analytics-class-name">' + displayName + '</span>';
+    html += '<span class="analytics-class-stats">' + songs.length + ' song' + (songs.length !== 1 ? 's' : '') + ' &middot; ' + totalPlays + ' total play' + (totalPlays !== 1 ? 's' : '') + '</span>';
+    html += '<span class="analytics-chevron">&#9654;</span>';
+    html += '</div>';
+    html += '<div class="analytics-class-body" style="display:none;">';
+    if (songs.length === 0) {
+      html += '<div class="analytics-empty">No songs played yet</div>';
+    } else {
+      html += '<table class="analytics-table"><thead><tr><th>Song</th><th>Plays</th></tr></thead><tbody>';
+      for (var j = 0; j < songs.length; j++) {
+        var song = songs[j];
+        var count = song.playCount || song.play_count || 0;
+        var title = song.songTitle || song.song_title || 'Unknown';
+        if (title.length > 50) title = title.substring(0, 47) + '...';
+        html += '<tr><td>' + escapeHtml(title) + '</td><td class="analytics-count">' + count + '</td></tr>';
+      }
+      html += '</tbody></table>';
+    }
+    html += '</div></div>';
+  }
+  container.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  var d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function toggleAnalyticsClass(header) {
+  var body = header.nextElementSibling;
+  var chevron = header.querySelector('.analytics-chevron');
+  if (body.style.display === 'none') {
+    body.style.display = '';
+    chevron.classList.add('open');
+  } else {
+    body.style.display = 'none';
+    chevron.classList.remove('open');
+  }
+}
 
 /* ═══════════════════════════════════════════════
    Initialization

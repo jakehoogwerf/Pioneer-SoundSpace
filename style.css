@@ -1083,6 +1083,86 @@ body.has-player-bar {
 }
 
 /* ═══════════════════════════════════════════════
+   Analytics Dashboard
+   ═══════════════════════════════════════════════ */
+.analytics-class {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.analytics-class:last-child { margin-bottom: 0; }
+.analytics-class-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: var(--surface-hover);
+  user-select: none;
+  transition: background .15s;
+}
+.analytics-class-header:hover { background: var(--border); }
+.analytics-class-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.analytics-class-stats {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex: 1;
+  text-align: right;
+  white-space: nowrap;
+}
+.analytics-chevron {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.analytics-chevron.open { transform: rotate(90deg); }
+.analytics-class-body {
+  padding: 0;
+}
+.analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.analytics-table thead th {
+  text-align: left;
+  padding: 6px 12px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.analytics-table thead th:last-child { text-align: right; }
+.analytics-table tbody td {
+  padding: 6px 12px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.analytics-table tbody tr:last-child td { border-bottom: none; }
+.analytics-count {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.analytics-empty {
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════
    Student Safe Mode
    ═══════════════════════════════════════════════ */
 .student-mode #addSongPanel { display: none; }

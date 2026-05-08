@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@netlify/blobs": "^9.0.0"
+    "@netlify/blobs": "^9.0.0",
+    "@netlify/database": "^1.0.0",
+    "drizzle-orm": "^1.0.0-beta.22"
   },
   "devDependencies": {
-    "@netlify/functions": "^4.0.0"
+    "@netlify/functions": "^4.0.0",
+    "drizzle-kit": "^1.0.0-beta.22"
   }
 }
