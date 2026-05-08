@@ -431,6 +431,86 @@ body.has-player-bar { padding-bottom: 96px; }
   font-style: italic;
 }
 
+/* ── TEACHER TOOLS ── */
+.panel-head-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.teacher-panel {
+  padding: 14px 20px;
+  margin-bottom: 14px;
+  border-left: 3px solid var(--gold);
+  background: #FFFCF4;
+  border-radius: 8px;
+}
+.teacher-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+.teacher-btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Song row checkbox */
+.song-row-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0;
+}
+.song-row.has-checkbox {
+  grid-template-columns: 28px 64px 1fr auto;
+}
+
+/* ── PAUSE OVERLAY ── */
+.pause-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 34, 54, 0.88);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.pause-overlay-content {
+  background: white;
+  border-radius: 16px;
+  padding: 40px 32px;
+  max-width: 360px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+.pause-overlay-icon {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 4px;
+  margin-bottom: 12px;
+}
+.pause-overlay-content h3 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+.pause-overlay-content p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 /* ── BOTTOM PLAYER BAR ── */
 .player-bar {
   position: fixed;
@@ -565,12 +645,15 @@ body.has-player-bar { padding-bottom: 96px; }
   .controls input { min-width: 0; width: 100%; flex: 1 1 100%; }
   .controls .btn { flex: 1 1 auto; justify-content: center; }
   .song-row { grid-template-columns: 56px 1fr auto; gap: 10px; }
+  .song-row.has-checkbox { grid-template-columns: 24px 56px 1fr auto; }
   .song-row-thumb { width: 56px; height: 42px; }
   .player-bar { padding: 8px 12px 10px; gap: 10px; }
   .player-bar-thumb { width: 40px; height: 40px; }
   .player-bar-btn { width: 36px; height: 36px; font-size: 16px; }
   .player-bar-btn-primary { width: 42px; height: 42px; font-size: 18px; }
   body.has-player-bar { padding-bottom: 84px; }
+  .teacher-tools { flex-direction: column; align-items: stretch; }
+  .teacher-btn-group { justify-content: center; }
 }
 @media (max-width: 480px) {
   .logo-wrap img { height: 28px; }
@@ -579,6 +662,8 @@ body.has-player-bar { padding-bottom: 96px; }
   .player-bar-thumb { width: 36px; height: 36px; }
   .song-row-thumb { width: 48px; height: 36px; }
   .song-row { grid-template-columns: 48px 1fr auto; padding: 6px 8px; }
+  .song-row.has-checkbox { grid-template-columns: 22px 48px 1fr auto; }
   .player-bar-time { display: none; }
   .kbd-hint { display: none; }
+  .panel-head-actions { gap: 4px; }
 }

@@ -48,7 +48,23 @@
   <div class="panel">
     <div class="panel-head">
       <h3>Playlist</h3>
-      <button class="btn btn-outline btn-sm" id="shuffleBtn" onclick="toggleShuffle()">Shuffle: Off</button>
+      <div class="panel-head-actions">
+        <button class="btn btn-outline btn-sm" id="shuffleBtn" onclick="toggleShuffle()">Shuffle: Off</button>
+        <button class="btn btn-outline btn-sm" id="teacherUnlockBtn" onclick="unlockTeacher()">Teacher Tools</button>
+      </div>
+    </div>
+    <div id="teacherPanel" class="teacher-panel" style="display:none;">
+      <div class="teacher-tools">
+        <div class="teacher-btn-group">
+          <button class="btn btn-outline btn-sm" onclick="selectAll()">Select All</button>
+          <button class="btn btn-outline btn-sm" onclick="deselectAll()">Deselect All</button>
+          <button class="btn btn-gold btn-sm" onclick="copySelected()">Copy Selected</button>
+          <button class="btn btn-navy btn-sm" id="pasteBtn" onclick="pasteSongs()" disabled>Paste Songs</button>
+        </div>
+        <div class="teacher-btn-group">
+          <button class="btn btn-danger btn-sm" id="pauseAllBtn" onclick="togglePauseAll()">Pause All</button>
+        </div>
+      </div>
     </div>
     <div id="playlist"></div>
   </div>
@@ -80,6 +96,14 @@
   </div>
 </div>
 
+<div id="pauseOverlay" class="pause-overlay" style="display:none;">
+  <div class="pause-overlay-content">
+    <div class="pause-overlay-icon">||</div>
+    <h3>Playback Paused</h3>
+    <p>Your teacher has paused playback for this class.</p>
+  </div>
+</div>
+
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
 const params = new URLSearchParams(window.location.search);
@@ -98,6 +122,11 @@ let ytReady = false;
 let pendingPlay = null;
 let isPlaying = false;
 let progressTimer = null;
+
+let teacherMode = false;
+let selectedSongs = new Set();
+let classPaused = false;
+const pauseApiUrl = "/api/pause/" + encodeURIComponent(classParam);
 
 const ADD_COOLDOWN_MS = 8000;
 const POLL_INTERVAL_MS = 6000;
@@ -314,6 +343,7 @@ function onYouTubeIframeAPIReady() {
 }
 
 function play(index) {
+  if (classPaused && !teacherMode) return;
   if (!playlist.length || index < 0 || index >= playlist.length) return;
   currentIndex = index;
 
@@ -357,6 +387,10 @@ function onPlayerStateChange(e) {
     return;
   }
   if (e.data === YT.PlayerState.PLAYING) {
+    if (classPaused && !teacherMode) {
+      try { ytPlayer.pauseVideo(); } catch (err) {}
+      return;
+    }
     isPlaying = true;
     startProgressTimer();
   } else if (e.data === YT.PlayerState.PAUSED) {
@@ -367,6 +401,7 @@ function onPlayerStateChange(e) {
 }
 
 function togglePlay() {
+  if (classPaused && !teacherMode) return;
   if (currentIndex < 0) {
     if (playlist.length) play(0);
     return;
@@ -516,6 +551,7 @@ function render() {
 
     item.addEventListener("click", (e) => {
       if (e.target.closest(".song-row-remove")) return;
+      if (e.target.closest(".song-row-checkbox")) return;
       play(i);
     });
     item.addEventListener("keydown", (e) => {
@@ -537,8 +573,173 @@ function render() {
         deleteSong(i);
       });
     }
+    if (teacherMode) {
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "song-row-checkbox";
+      cb.checked = selectedSongs.has(i);
+      cb.addEventListener("click", function(ev) { ev.stopPropagation(); });
+      cb.addEventListener("change", function() {
+        if (cb.checked) selectedSongs.add(i);
+        else selectedSongs.delete(i);
+      });
+      item.insertBefore(cb, item.firstChild);
+      item.classList.add("has-checkbox");
+    }
     div.appendChild(item);
   });
+}
+
+function unlockTeacher() {
+  if (teacherMode) {
+    teacherMode = false;
+    selectedSongs.clear();
+    document.getElementById("teacherPanel").style.display = "none";
+    document.getElementById("teacherUnlockBtn").innerText = "Teacher Tools";
+    document.getElementById("teacherUnlockBtn").classList.remove("btn-gold");
+    document.getElementById("teacherUnlockBtn").classList.add("btn-outline");
+    updatePauseUI();
+    render();
+    return;
+  }
+  const pwd = window.prompt("Enter teacher password:");
+  if (pwd === null) return;
+  if (pwd !== "2222") {
+    window.alert("Incorrect password.");
+    return;
+  }
+  teacherMode = true;
+  document.getElementById("teacherPanel").style.display = "";
+  document.getElementById("teacherUnlockBtn").innerText = "Lock Tools";
+  document.getElementById("teacherUnlockBtn").classList.add("btn-gold");
+  document.getElementById("teacherUnlockBtn").classList.remove("btn-outline");
+  updatePasteButton();
+  updatePauseUI();
+  render();
+}
+
+function selectAll() {
+  selectedSongs.clear();
+  playlist.forEach(function(_, i) { selectedSongs.add(i); });
+  render();
+}
+
+function deselectAll() {
+  selectedSongs.clear();
+  render();
+}
+
+function copySelected() {
+  if (selectedSongs.size === 0) {
+    alert("No songs selected. Use the checkboxes to select songs first.");
+    return;
+  }
+  var songs = [];
+  selectedSongs.forEach(function(i) {
+    if (playlist[i]) songs.push({ id: playlist[i].id, title: playlist[i].title });
+  });
+  localStorage.setItem("pvs_clipboard", JSON.stringify(songs));
+  alert("Copied " + songs.length + " song(s). Go to another class and click Paste to add them.");
+  updatePasteButton();
+}
+
+function updatePasteButton() {
+  var btn = document.getElementById("pasteBtn");
+  if (!btn) return;
+  var clip = localStorage.getItem("pvs_clipboard");
+  var songs = [];
+  try { songs = JSON.parse(clip); } catch (e) {}
+  if (Array.isArray(songs) && songs.length > 0) {
+    btn.innerText = "Paste " + songs.length + " Song(s)";
+    btn.disabled = false;
+  } else {
+    btn.innerText = "Paste Songs";
+    btn.disabled = true;
+  }
+}
+
+function pasteSongs() {
+  var clip = localStorage.getItem("pvs_clipboard");
+  var songs = [];
+  try { songs = JSON.parse(clip); } catch (e) {}
+  if (!Array.isArray(songs) || songs.length === 0) {
+    alert("No songs in clipboard. Copy songs from another class first.");
+    return;
+  }
+  var existingIds = new Set(playlist.map(function(s) { return s.id; }));
+  var added = 0;
+  for (var j = 0; j < songs.length; j++) {
+    var song = songs[j];
+    if (song && song.id && !existingIds.has(song.id)) {
+      playlist.push({ id: song.id, title: song.title || "YouTube Video" });
+      existingIds.add(song.id);
+      added++;
+    }
+  }
+  if (added > 0) {
+    save();
+    render();
+    var dupes = songs.length - added;
+    alert("Pasted " + added + " new song(s)." + (dupes > 0 ? " " + dupes + " duplicate(s) skipped." : ""));
+  } else {
+    alert("All songs already exist in this playlist.");
+  }
+}
+
+async function togglePauseAll() {
+  var newState = !classPaused;
+  try {
+    var res = await fetch(pauseApiUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paused: newState })
+    });
+    if (res.ok) {
+      var data = await res.json();
+      classPaused = data.paused;
+      updatePauseUI();
+    }
+  } catch (e) {}
+}
+
+function updatePauseUI() {
+  var btn = document.getElementById("pauseAllBtn");
+  var overlay = document.getElementById("pauseOverlay");
+  if (btn) {
+    btn.innerText = classPaused ? "Resume All" : "Pause All";
+    if (classPaused) {
+      btn.classList.remove("btn-danger");
+      btn.classList.add("btn-gold");
+    } else {
+      btn.classList.add("btn-danger");
+      btn.classList.remove("btn-gold");
+    }
+  }
+  if (classPaused) {
+    if (ytPlayer && isPlaying) {
+      try { ytPlayer.pauseVideo(); } catch (e) {}
+    }
+    if (overlay && !teacherMode) overlay.style.display = "";
+  } else {
+    if (overlay) overlay.style.display = "none";
+  }
+}
+
+async function pollPauseState() {
+  try {
+    var res = await fetch(pauseApiUrl, { cache: "no-store" });
+    if (res.ok) {
+      var data = await res.json();
+      var wasPaused = classPaused;
+      classPaused = !!data.paused;
+      if (classPaused !== wasPaused) {
+        updatePauseUI();
+      }
+      if (classPaused && !teacherMode && isPlaying && ytPlayer) {
+        try { ytPlayer.pauseVideo(); } catch (e) {}
+      }
+    }
+  } catch (e) {}
 }
 
 async function init() {
@@ -552,6 +753,8 @@ async function init() {
   updatePlayButton();
   backfillTitles();
   startPolling();
+  pollPauseState();
+  setInterval(pollPauseState, 3000);
 }
 
 init();
@@ -565,12 +768,15 @@ document.addEventListener("keydown", (e) => {
 
   if (e.code === "Space" || e.key === " ") {
     e.preventDefault();
+    if (classPaused && !teacherMode) return;
     togglePlay();
   } else if (e.key === "ArrowRight") {
     e.preventDefault();
+    if (classPaused && !teacherMode) return;
     next();
   } else if (e.key === "ArrowLeft") {
     e.preventDefault();
+    if (classPaused && !teacherMode) return;
     prev();
   }
 });
