@@ -2,10 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>PVS SoundSpace · Class Player</title>
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script>
+    (function(){
+      var f = localStorage.getItem('pvs_force_theme');
+      var t = (f === 'dark' || f === 'light') ? f : (localStorage.getItem('pvs_theme') || 'light');
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
 </head>
 <body class="has-player-bar">
 
@@ -21,6 +28,7 @@
     </div>
   </div>
   <div class="header-right">
+    <button class="btn btn-ghost theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
     <a class="btn btn-ghost" href="index.html">All Classes</a>
   </div>
 </header>
@@ -28,10 +36,14 @@
 
 <main class="main">
   <a href="index.html" class="back-link">← Back to classes</a>
-  <h2 class="page-title" id="classTitle">Class</h2>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <h2 class="page-title" id="classTitle">Class</h2>
+    <button class="admin-trigger" id="adminTrigger" onclick="openAdmin()" aria-label="Settings" title="Settings">⚙</button>
+  </div>
   <p class="page-subtitle">Add YouTube links to build a playlist for this class.</p>
 
-  <div class="panel">
+  <!-- Add Song Panel -->
+  <div class="panel" id="addSongPanel">
     <h3>Add a Song</h3>
     <div class="controls">
       <input id="linkInput" placeholder="Paste a YouTube link…" inputmode="url">
@@ -42,9 +54,17 @@
       <span><kbd>Space</kbd> play/pause</span>
       <span><kbd>←</kbd> previous</span>
       <span><kbd>→</kbd> next</span>
+      <span><kbd>↑↓</kbd> volume</span>
     </div>
   </div>
 
+  <!-- Recently Played -->
+  <div class="panel" id="recentPanel" style="display:none;">
+    <h3>Recently Played</h3>
+    <div id="recentlyPlayed" class="recent-list"></div>
+  </div>
+
+  <!-- Playlist Panel -->
   <div class="panel">
     <div class="panel-head">
       <h3>Playlist</h3>
@@ -70,10 +90,12 @@
   </div>
 </main>
 
+<!-- Hidden YouTube Player -->
 <div id="hiddenPlayerWrap" aria-hidden="true">
   <div id="player"></div>
 </div>
 
+<!-- Bottom Player Bar -->
 <div id="playerBar" class="player-bar" role="region" aria-label="Now playing">
   <div class="player-bar-info">
     <div class="player-bar-thumb" id="playerBarThumb" aria-hidden="true"></div>
@@ -87,6 +109,10 @@
   </div>
   <div class="player-bar-controls">
     <span class="player-bar-time" id="timeDisplay" aria-live="off">0:00 / 0:00</span>
+    <div class="player-bar-volume" id="volumeWrap">
+      <button class="player-bar-btn" id="volumeBtn" onclick="toggleMute()" aria-label="Volume" style="width:36px;height:36px;font-size:15px;">🔊</button>
+      <input type="range" id="volumeSlider" min="0" max="100" value="100" class="volume-slider" oninput="setVolume(this.value)">
+    </div>
     <button class="player-bar-btn" id="prevBtn" onclick="prev()" aria-label="Previous">⏮</button>
     <button class="player-bar-btn player-bar-btn-primary" id="playBtn" onclick="togglePlay()" aria-label="Play/Pause">▶</button>
     <button class="player-bar-btn" id="nextBtn" onclick="next()" aria-label="Next">⏭</button>
@@ -96,6 +122,7 @@
   </div>
 </div>
 
+<!-- Pause Overlay -->
 <div id="pauseOverlay" class="pause-overlay" style="display:none;">
   <div class="pause-overlay-content">
     <div class="pause-overlay-icon">||</div>
@@ -104,42 +131,465 @@
   </div>
 </div>
 
+<!-- Admin Modal -->
+<div id="adminOverlay" class="admin-overlay" style="display:none;">
+  <div class="admin-backdrop" onclick="closeAdmin()"></div>
+  <div class="admin-modal">
+    <div class="admin-modal-header">
+      <h2>Admin Settings</h2>
+      <button class="admin-close" onclick="closeAdmin()">✕</button>
+    </div>
+    <div class="admin-modal-body">
+      <!-- Password Management -->
+      <div class="admin-section">
+        <h3>🔑 Password Management</h3>
+        <div class="admin-field">
+          <label>Student / Teacher Password</label>
+          <div class="admin-input-group">
+            <input type="password" id="adminPwdInput">
+            <button class="btn btn-sm btn-outline" id="adminPwdToggle" onclick="toggleAdminPwdVis()">Show</button>
+          </div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn btn-sm btn-gold" onclick="saveAdminPassword()">Save Password</button>
+          <button class="btn btn-sm btn-outline" onclick="resetPassword()">Reset to Default</button>
+        </div>
+      </div>
+
+      <!-- Playlist Controls -->
+      <div class="admin-section">
+        <h3>🎵 Playlist Controls</h3>
+        <div class="admin-actions">
+          <button class="btn btn-sm btn-danger" onclick="adminClearCurrent()">Clear Current Playlist</button>
+          <button class="btn btn-sm btn-danger" onclick="adminClearAll()">Clear All Playlists</button>
+          <button class="btn btn-sm btn-outline" onclick="adminRemoveDupes()">Remove Duplicates</button>
+        </div>
+      </div>
+
+      <!-- Classroom Controls -->
+      <div class="admin-section">
+        <h3>👩‍🏫 Classroom Controls</h3>
+        <div class="admin-toggle">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span>Teacher Edit Mode</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="adminTeacherToggle" onchange="toggleAdminTeacher()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="admin-toggle">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span>Student Safe Mode</span>
+              <small>Hides add/delete — playback only</small>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="adminStudentToggle" onchange="toggleAdminStudent()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="admin-toggle">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span>Focus Mode</span>
+              <small>Minimal classroom view</small>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="adminFocusToggle" onchange="toggleAdminFocus()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Appearance -->
+      <div class="admin-section">
+        <h3>🎨 Appearance</h3>
+        <div class="admin-field">
+          <label>Theme</label>
+          <select id="adminThemeSelect" onchange="setAdminTheme()">
+            <option value="auto">Auto (Remember Choice)</option>
+            <option value="light">Force Light Mode</option>
+            <option value="dark">Force Dark Mode</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
-const params = new URLSearchParams(window.location.search);
-const classParam = params.get("class") || "default";
-const className = classParam;
-const apiUrl = "/api/playlist/" + encodeURIComponent(classParam);
+/* ═══════════════════════════════════════════════
+   Configuration & Constants
+   ═══════════════════════════════════════════════ */
+var MASTER_PASSWORD = 'Welcome2024';
+var DEFAULT_PASSWORD = '2222';
+var ADD_COOLDOWN_MS = 8000;
+var POLL_INTERVAL_MS = 6000;
+var ALL_CLASSES = ['kangaroos','bilby','swans','numbats','bobtails','karak','wombats','PE'];
 
-document.getElementById("classTitle").innerText =
-  className === "PE" ? "PE Class" : className.charAt(0).toUpperCase() + className.slice(1);
+/* ═══════════════════════════════════════════════
+   URL Parameters & API
+   ═══════════════════════════════════════════════ */
+var params = new URLSearchParams(window.location.search);
+var classParam = params.get('class') || 'default';
+var className = classParam;
+var apiUrl = '/api/playlist/' + encodeURIComponent(classParam);
+var pauseApiUrl = '/api/pause/' + encodeURIComponent(classParam);
 
-let playlist = [];
-let shuffle = false;
-let currentIndex = -1;
-let ytPlayer = null;
-let ytReady = false;
-let pendingPlay = null;
-let isPlaying = false;
-let progressTimer = null;
+document.getElementById('classTitle').innerText =
+  className === 'PE' ? 'PE Class' : className.charAt(0).toUpperCase() + className.slice(1);
 
-let teacherMode = false;
-let selectedSongs = new Set();
-let classPaused = false;
-const pauseApiUrl = "/api/pause/" + encodeURIComponent(classParam);
+/* ═══════════════════════════════════════════════
+   State
+   ═══════════════════════════════════════════════ */
+var playlist = [];
+var shuffle = false;
+var currentIndex = -1;
+var ytPlayer = null;
+var ytReady = false;
+var pendingPlay = null;
+var isPlaying = false;
+var progressTimer = null;
 
-const ADD_COOLDOWN_MS = 8000;
-const POLL_INTERVAL_MS = 6000;
-let lastAddTime = 0;
-let cooldownTimer = null;
-let saveInFlight = 0;
-let saveQueued = false;
-let pollTimer = null;
+var teacherMode = false;
+var selectedSongs = new Set();
+var classPaused = false;
 
+var lastAddTime = 0;
+var cooldownTimer = null;
+var saveInFlight = 0;
+var saveQueued = false;
+var pollTimer = null;
+
+var studentMode = localStorage.getItem('pvs_student_mode') === 'true';
+var focusMode = localStorage.getItem('pvs_focus_mode') === 'true';
+var currentVolume = parseInt(localStorage.getItem('pvs_volume') || '100', 10);
+var isMuted = false;
+
+/* ═══════════════════════════════════════════════
+   Password Management
+   ═══════════════════════════════════════════════ */
+function getPassword() {
+  return localStorage.getItem('pvs_admin_password') || DEFAULT_PASSWORD;
+}
+
+function setPassword(pwd) {
+  localStorage.setItem('pvs_admin_password', pwd);
+}
+
+/* ═══════════════════════════════════════════════
+   Theme System
+   ═══════════════════════════════════════════════ */
+function getTheme() {
+  return document.documentElement.getAttribute('data-theme') || 'light';
+}
+
+function toggleTheme() {
+  document.body.classList.add('theme-transition');
+  var next = getTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('pvs_theme', next);
+  var forced = localStorage.getItem('pvs_force_theme');
+  if (forced && forced !== 'auto') localStorage.setItem('pvs_force_theme', next);
+  updateThemeButton();
+  setTimeout(function(){ document.body.classList.remove('theme-transition'); }, 350);
+}
+
+function applyTheme(theme) {
+  document.body.classList.add('theme-transition');
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('pvs_theme', theme);
+  updateThemeButton();
+  setTimeout(function(){ document.body.classList.remove('theme-transition'); }, 350);
+}
+
+function updateThemeButton() {
+  var btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = getTheme() === 'dark' ? '☀️' : '🌙';
+}
+
+/* ═══════════════════════════════════════════════
+   Student Mode / Focus Mode
+   ═══════════════════════════════════════════════ */
+function applyModes() {
+  document.body.classList.toggle('student-mode', studentMode);
+  document.body.classList.toggle('focus-mode', focusMode);
+}
+
+/* ═══════════════════════════════════════════════
+   Volume Control
+   ═══════════════════════════════════════════════ */
+function setVolume(val) {
+  val = parseInt(val, 10);
+  currentVolume = val;
+  isMuted = val === 0;
+  if (ytPlayer && ytPlayer.setVolume) {
+    try { ytPlayer.setVolume(val); } catch(e){}
+  }
+  localStorage.setItem('pvs_volume', val);
+  updateVolumeIcon();
+}
+
+function toggleMute() {
+  if (isMuted) {
+    var restored = parseInt(localStorage.getItem('pvs_volume_pre_mute') || '100', 10);
+    if (restored === 0) restored = 100;
+    setVolume(restored);
+    document.getElementById('volumeSlider').value = restored;
+  } else {
+    localStorage.setItem('pvs_volume_pre_mute', currentVolume);
+    setVolume(0);
+    document.getElementById('volumeSlider').value = 0;
+  }
+}
+
+function updateVolumeIcon() {
+  var btn = document.getElementById('volumeBtn');
+  if (!btn) return;
+  if (currentVolume === 0 || isMuted) btn.textContent = '🔇';
+  else if (currentVolume < 50) btn.textContent = '🔉';
+  else btn.textContent = '🔊';
+}
+
+function initVolume() {
+  var slider = document.getElementById('volumeSlider');
+  if (slider) slider.value = currentVolume;
+  updateVolumeIcon();
+}
+
+/* ═══════════════════════════════════════════════
+   Recently Played
+   ═══════════════════════════════════════════════ */
+function getRecentlyPlayed() {
+  try { return JSON.parse(localStorage.getItem('pvs_recently_played') || '[]'); }
+  catch(e){ return []; }
+}
+
+function addToRecentlyPlayed(song) {
+  var recent = getRecentlyPlayed();
+  recent = recent.filter(function(s){ return s.id !== song.id; });
+  recent.unshift({ id: song.id, title: song.title });
+  if (recent.length > 5) recent = recent.slice(0, 5);
+  localStorage.setItem('pvs_recently_played', JSON.stringify(recent));
+  renderRecentlyPlayed();
+}
+
+function renderRecentlyPlayed() {
+  var recent = getRecentlyPlayed();
+  var panel = document.getElementById('recentPanel');
+  var container = document.getElementById('recentlyPlayed');
+  if (!panel || !container) return;
+
+  if (recent.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = '';
+  container.innerHTML = '';
+  recent.forEach(function(song) {
+    var item = document.createElement('div');
+    item.className = 'recent-item';
+    item.innerHTML =
+      '<div class="recent-item-thumb"><img src="https://img.youtube.com/vi/' + escapeHtml(song.id) + '/mqdefault.jpg" alt="" loading="lazy"></div>' +
+      '<div class="recent-item-title">' + escapeHtml(song.title) + '</div>';
+    item.addEventListener('click', function() {
+      var idx = playlist.findIndex(function(s){ return s.id === song.id; });
+      if (idx >= 0) play(idx);
+      else {
+        playlist.push({ id: song.id, title: song.title });
+        save();
+        render();
+        play(playlist.length - 1);
+      }
+    });
+    container.appendChild(item);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Admin Panel
+   ═══════════════════════════════════════════════ */
+var titleClickCount = 0;
+var titleClickTimer = null;
+
+function setupTitleTripleClick() {
+  var title = document.getElementById('classTitle');
+  if (!title) return;
+  title.addEventListener('click', function() {
+    titleClickCount++;
+    if (titleClickTimer) clearTimeout(titleClickTimer);
+    if (titleClickCount >= 3) {
+      titleClickCount = 0;
+      openAdmin();
+    }
+    titleClickTimer = setTimeout(function(){ titleClickCount = 0; }, 600);
+  });
+}
+
+function openAdmin() {
+  var pwd = window.prompt('Enter master password:');
+  if (pwd === null) return;
+  if (pwd !== MASTER_PASSWORD) {
+    window.alert('Incorrect master password.');
+    return;
+  }
+  populateAdmin();
+  document.getElementById('adminOverlay').style.display = '';
+}
+
+function closeAdmin() {
+  document.getElementById('adminOverlay').style.display = 'none';
+}
+
+function populateAdmin() {
+  document.getElementById('adminPwdInput').value = getPassword();
+  document.getElementById('adminPwdInput').type = 'password';
+  document.getElementById('adminPwdToggle').textContent = 'Show';
+  document.getElementById('adminTeacherToggle').checked = teacherMode;
+  document.getElementById('adminStudentToggle').checked = studentMode;
+  document.getElementById('adminFocusToggle').checked = focusMode;
+  var forceTheme = localStorage.getItem('pvs_force_theme') || 'auto';
+  document.getElementById('adminThemeSelect').value = forceTheme;
+}
+
+function toggleAdminPwdVis() {
+  var inp = document.getElementById('adminPwdInput');
+  var btn = document.getElementById('adminPwdToggle');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.textContent = 'Hide';
+  } else {
+    inp.type = 'password';
+    btn.textContent = 'Show';
+  }
+}
+
+function saveAdminPassword() {
+  var pwd = document.getElementById('adminPwdInput').value.trim();
+  if (!pwd) { alert('Password cannot be empty.'); return; }
+  setPassword(pwd);
+  alert('Password saved.');
+}
+
+function resetPassword() {
+  setPassword(DEFAULT_PASSWORD);
+  document.getElementById('adminPwdInput').value = DEFAULT_PASSWORD;
+  alert('Password reset to default (' + DEFAULT_PASSWORD + ').');
+}
+
+function adminClearCurrent() {
+  if (!confirm('Clear the current class playlist? This cannot be undone.')) return;
+  playlist = [];
+  currentIndex = -1;
+  isPlaying = false;
+  if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
+  stopProgressTimer();
+  setProgress(0);
+  save();
+  render();
+  updateNowPlaying();
+  updatePlayButton();
+  alert('Playlist cleared.');
+}
+
+function adminClearAll() {
+  if (!confirm('Clear ALL class playlists across the entire school? This cannot be undone.')) return;
+  var promises = ALL_CLASSES.map(function(cls) {
+    return fetch('/api/playlist/' + encodeURIComponent(cls), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify([])
+    }).catch(function(){});
+  });
+  Promise.all(promises).then(function() {
+    playlist = [];
+    currentIndex = -1;
+    isPlaying = false;
+    if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
+    stopProgressTimer();
+    setProgress(0);
+    render();
+    updateNowPlaying();
+    updatePlayButton();
+    alert('All playlists cleared.');
+  });
+}
+
+function adminRemoveDupes() {
+  var seen = new Set();
+  var deduped = [];
+  for (var j = 0; j < playlist.length; j++) {
+    if (!seen.has(playlist[j].id)) {
+      seen.add(playlist[j].id);
+      deduped.push(playlist[j]);
+    }
+  }
+  var removed = playlist.length - deduped.length;
+  if (removed === 0) { alert('No duplicates found.'); return; }
+  playlist = deduped;
+  if (currentIndex >= playlist.length) currentIndex = playlist.length - 1;
+  save();
+  render();
+  updateNowPlaying();
+  alert('Removed ' + removed + ' duplicate(s).');
+}
+
+function toggleAdminTeacher() {
+  var checked = document.getElementById('adminTeacherToggle').checked;
+  if (checked && !teacherMode) {
+    teacherMode = true;
+    document.getElementById('teacherPanel').style.display = '';
+    document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
+    document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
+    document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
+    updatePasteButton();
+    updatePauseUI();
+    render();
+  } else if (!checked && teacherMode) {
+    teacherMode = false;
+    selectedSongs.clear();
+    document.getElementById('teacherPanel').style.display = 'none';
+    document.getElementById('teacherUnlockBtn').innerText = 'Teacher Tools';
+    document.getElementById('teacherUnlockBtn').classList.remove('btn-gold');
+    document.getElementById('teacherUnlockBtn').classList.add('btn-outline');
+    updatePauseUI();
+    render();
+  }
+}
+
+function toggleAdminStudent() {
+  studentMode = document.getElementById('adminStudentToggle').checked;
+  localStorage.setItem('pvs_student_mode', studentMode);
+  applyModes();
+}
+
+function toggleAdminFocus() {
+  focusMode = document.getElementById('adminFocusToggle').checked;
+  localStorage.setItem('pvs_focus_mode', focusMode);
+  applyModes();
+}
+
+function setAdminTheme() {
+  var val = document.getElementById('adminThemeSelect').value;
+  localStorage.setItem('pvs_force_theme', val);
+  if (val === 'dark' || val === 'light') {
+    applyTheme(val);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Playlist API
+   ═══════════════════════════════════════════════ */
 async function fetchRemotePlaylist() {
-  const res = await fetch(apiUrl, { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to load playlist");
-  const data = await res.json();
+  var res = await fetch(apiUrl, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load playlist');
+  var data = await res.json();
   return Array.isArray(data) ? data : [];
 }
 
@@ -150,19 +600,18 @@ async function save() {
     saveQueued = false;
     saveInFlight++;
     try {
-      const res = await fetch(apiUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      var res = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(playlist)
       });
       if (res.ok) {
-        const saved = await res.json();
+        var saved = await res.json();
         if (Array.isArray(saved) && !saveQueued) {
           applyRemotePlaylist(saved);
         }
       }
     } catch (e) {
-      // Network blip — next save or poll will reconcile.
     } finally {
       saveInFlight--;
     }
@@ -170,10 +619,10 @@ async function save() {
 }
 
 function applyRemotePlaylist(next) {
-  const before = currentIndex >= 0 ? playlist[currentIndex] : null;
+  var before = currentIndex >= 0 ? playlist[currentIndex] : null;
   playlist = next;
   if (before) {
-    const newIdx = playlist.findIndex(s => s.id === before.id);
+    var newIdx = playlist.findIndex(function(s){ return s.id === before.id; });
     currentIndex = newIdx;
     if (newIdx === -1) {
       currentIndex = -1;
@@ -194,7 +643,7 @@ async function pollRemote() {
   if (saveInFlight || saveQueued) return;
   if (document.hidden) return;
   try {
-    const next = await fetchRemotePlaylist();
+    var next = await fetchRemotePlaylist();
     if (!playlistsEqual(playlist, next)) {
       applyRemotePlaylist(next);
     }
@@ -203,7 +652,7 @@ async function pollRemote() {
 
 function playlistsEqual(a, b) {
   if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
+  for (var i = 0; i < a.length; i++) {
     if (a[i].id !== b[i].id || a[i].title !== b[i].title) return false;
   }
   return true;
@@ -214,92 +663,94 @@ function startPolling() {
   pollTimer = setInterval(pollRemote, POLL_INTERVAL_MS);
 }
 
+/* ═══════════════════════════════════════════════
+   YouTube Helpers
+   ═══════════════════════════════════════════════ */
 function extractID(url) {
-  const trimmed = String(url).trim();
-  const regExp = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/;
-  const match = trimmed.match(regExp);
+  var trimmed = String(url).trim();
+  var regExp = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/;
+  var match = trimmed.match(regExp);
   return match ? match[1] : null;
 }
 
 function thumbUrl(id) {
-  return "https://img.youtube.com/vi/" + id + "/mqdefault.jpg";
+  return 'https://img.youtube.com/vi/' + id + '/mqdefault.jpg';
 }
 
 async function fetchTitle(id) {
   try {
-    const res = await fetch(
-      "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=" +
-        encodeURIComponent(id) +
-        "&format=json"
+    var res = await fetch(
+      'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=' +
+        encodeURIComponent(id) + '&format=json'
     );
     if (!res.ok) return null;
-    const data = await res.json();
+    var data = await res.json();
     return data.title || null;
   } catch (e) {
     return null;
   }
 }
 
+/* ═══════════════════════════════════════════════
+   Add / Delete Songs
+   ═══════════════════════════════════════════════ */
 async function addSong() {
-  const now = Date.now();
-  const remaining = ADD_COOLDOWN_MS - (now - lastAddTime);
-  if (remaining > 0) {
-    showCooldown(remaining);
-    return;
-  }
+  var now = Date.now();
+  var remaining = ADD_COOLDOWN_MS - (now - lastAddTime);
+  if (remaining > 0) { showCooldown(remaining); return; }
 
-  const inputEl = document.getElementById("linkInput");
-  const id = extractID(inputEl.value);
-
-  if (!id) { alert("Invalid YouTube link"); return; }
+  var inputEl = document.getElementById('linkInput');
+  var id = extractID(inputEl.value);
+  if (!id) { alert('Invalid YouTube link'); return; }
 
   lastAddTime = now;
-  const song = { id: id, title: "Loading…" };
+  var song = { id: id, title: 'Loading…' };
   playlist.push(song);
   save();
   render();
-  inputEl.value = "";
+  inputEl.value = '';
   startCooldown();
 
-  const title = await fetchTitle(id);
-  song.title = title || "YouTube Video";
+  var title = await fetchTitle(id);
+  song.title = title || 'YouTube Video';
   save();
   render();
 }
 
 function startCooldown() {
-  const btn = document.getElementById("addBtn");
-  const hint = document.getElementById("cooldownHint");
+  var btn = document.getElementById('addBtn');
+  var hint = document.getElementById('cooldownHint');
   if (cooldownTimer) clearInterval(cooldownTimer);
 
-  const tick = () => {
-    const remaining = ADD_COOLDOWN_MS - (Date.now() - lastAddTime);
+  var tick = function() {
+    var remaining = ADD_COOLDOWN_MS - (Date.now() - lastAddTime);
     if (remaining <= 0) {
-      if (btn) { btn.disabled = false; btn.innerText = "Add Song"; }
-      if (hint) hint.innerText = "";
+      if (btn) { btn.disabled = false; btn.innerText = 'Add Song'; }
+      if (hint) hint.innerText = '';
       clearInterval(cooldownTimer);
       cooldownTimer = null;
       return;
     }
-    const secs = Math.ceil(remaining / 1000);
-    if (btn) { btn.disabled = true; btn.innerText = "Wait " + secs + "s"; }
-    if (hint) hint.innerText = "Cooldown: another song can be added in " + secs + "s.";
+    var secs = Math.ceil(remaining / 1000);
+    if (btn) { btn.disabled = true; btn.innerText = 'Wait ' + secs + 's'; }
+    if (hint) hint.innerText = 'Cooldown: another song can be added in ' + secs + 's.';
   };
   tick();
   cooldownTimer = setInterval(tick, 250);
 }
 
 function showCooldown(remaining) {
-  const hint = document.getElementById("cooldownHint");
-  const secs = Math.ceil(remaining / 1000);
-  if (hint) hint.innerText = "Please wait " + secs + "s before adding another song.";
+  var hint = document.getElementById('cooldownHint');
+  var secs = Math.ceil(remaining / 1000);
+  if (hint) hint.innerText = 'Please wait ' + secs + 's before adding another song.';
 }
 
 async function backfillTitles() {
-  let changed = false;
-  for (const song of playlist) {
-    if (!song.title || song.title === "YouTube Video" || song.title === "Loading…" || song.title === "Loading...") {
-      const title = await fetchTitle(song.id);
+  var changed = false;
+  for (var k = 0; k < playlist.length; k++) {
+    var song = playlist[k];
+    if (!song.title || song.title === 'YouTube Video' || song.title === 'Loading…' || song.title === 'Loading...') {
+      var title = await fetchTitle(song.id);
       if (title) {
         song.title = title;
         changed = true;
@@ -314,7 +765,7 @@ async function backfillTitles() {
 }
 
 function deleteSong(index) {
-  const wasPlaying = index === currentIndex;
+  var wasPlaying = index === currentIndex;
   playlist.splice(index, 1);
   if (wasPlaying) {
     currentIndex = -1;
@@ -333,10 +784,13 @@ function deleteSong(index) {
   updatePlayButton();
 }
 
+/* ═══════════════════════════════════════════════
+   YouTube Player
+   ═══════════════════════════════════════════════ */
 function onYouTubeIframeAPIReady() {
   ytReady = true;
   if (pendingPlay !== null) {
-    const i = pendingPlay;
+    var i = pendingPlay;
     pendingPlay = null;
     play(i);
   }
@@ -353,9 +807,9 @@ function play(index) {
   }
 
   if (!ytPlayer) {
-    ytPlayer = new YT.Player("player", {
-      width: "0",
-      height: "0",
+    ytPlayer = new YT.Player('player', {
+      width: '0',
+      height: '0',
       videoId: playlist[index].id,
       playerVars: {
         autoplay: 1,
@@ -364,15 +818,20 @@ function play(index) {
         modestbranding: 1
       },
       events: {
-        onReady: function(e) { e.target.playVideo(); },
+        onReady: function(e) {
+          e.target.setVolume(currentVolume);
+          e.target.playVideo();
+        },
         onStateChange: onPlayerStateChange
       }
     });
   } else {
     ytPlayer.loadVideoById(playlist[index].id);
+    try { ytPlayer.setVolume(currentVolume); } catch(e){}
   }
 
   isPlaying = true;
+  addToRecentlyPlayed(playlist[index]);
   render();
   updateNowPlaying();
   updatePlayButton();
@@ -415,18 +874,18 @@ function togglePlay() {
 
 function toggleShuffle() {
   shuffle = !shuffle;
-  const btn = document.getElementById("shuffleBtn");
+  var btn = document.getElementById('shuffleBtn');
   if (btn) {
-    btn.innerText = "Shuffle: " + (shuffle ? "On" : "Off");
-    btn.classList.toggle("btn-gold", shuffle);
-    btn.classList.toggle("btn-outline", !shuffle);
+    btn.innerText = 'Shuffle: ' + (shuffle ? 'On' : 'Off');
+    btn.classList.toggle('btn-gold', shuffle);
+    btn.classList.toggle('btn-outline', !shuffle);
   }
 }
 
 function next() {
   if (!playlist.length) return;
   if (shuffle && playlist.length > 1) {
-    let n = currentIndex;
+    var n = currentIndex;
     while (n === currentIndex) n = Math.floor(Math.random() * playlist.length);
     currentIndex = n;
   } else {
@@ -442,73 +901,76 @@ function prev() {
   play(currentIndex);
 }
 
+/* ═══════════════════════════════════════════════
+   UI Helpers
+   ═══════════════════════════════════════════════ */
 function escapeHtml(s) {
   return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function updateNowPlaying() {
-  const el = document.getElementById("nowPlaying");
-  const thumb = document.getElementById("playerBarThumb");
-  const eq = document.getElementById("playerBarEq");
+  var el = document.getElementById('nowPlaying');
+  var thumb = document.getElementById('playerBarThumb');
+  var eq = document.getElementById('playerBarEq');
   if (currentIndex >= 0 && playlist[currentIndex]) {
-    if (el) el.innerText = playlist[currentIndex].title || "YouTube Video";
+    if (el) el.innerText = playlist[currentIndex].title || 'YouTube Video';
     if (thumb) {
       thumb.style.backgroundImage = "url('" + thumbUrl(playlist[currentIndex].id) + "')";
-      thumb.classList.add("has-art");
+      thumb.classList.add('has-art');
     }
-    if (eq) eq.classList.add("is-active");
+    if (eq) eq.classList.add('is-active');
   } else {
-    if (el) el.innerText = "Nothing playing";
+    if (el) el.innerText = 'Nothing playing';
     if (thumb) {
-      thumb.style.backgroundImage = "";
-      thumb.classList.remove("has-art");
+      thumb.style.backgroundImage = '';
+      thumb.classList.remove('has-art');
     }
-    if (eq) eq.classList.remove("is-active");
+    if (eq) eq.classList.remove('is-active');
     setTimeDisplay(0, 0);
   }
 }
 
 function updatePlayButton() {
-  const btn = document.getElementById("playBtn");
-  const eq = document.getElementById("playerBarEq");
-  if (eq) eq.classList.toggle("is-playing", isPlaying && currentIndex >= 0);
+  var btn = document.getElementById('playBtn');
+  var eq = document.getElementById('playerBarEq');
+  if (eq) eq.classList.toggle('is-playing', isPlaying && currentIndex >= 0);
   if (!btn) return;
-  btn.innerText = isPlaying ? "⏸" : "▶";
-  btn.setAttribute("aria-label", isPlaying ? "Pause" : "Play");
+  btn.innerText = isPlaying ? '⏸' : '▶';
+  btn.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
 }
 
 function setProgress(ratio) {
-  const fill = document.getElementById("progressFill");
+  var fill = document.getElementById('progressFill');
   if (!fill) return;
-  const pct = Math.max(0, Math.min(1, ratio)) * 100;
-  fill.style.width = pct + "%";
+  var pct = Math.max(0, Math.min(1, ratio)) * 100;
+  fill.style.width = pct + '%';
 }
 
 function formatTime(seconds) {
   if (!isFinite(seconds) || seconds < 0) seconds = 0;
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return m + ":" + (s < 10 ? "0" : "") + s;
+  var m = Math.floor(seconds / 60);
+  var s = Math.floor(seconds % 60);
+  return m + ':' + (s < 10 ? '0' : '') + s;
 }
 
 function setTimeDisplay(current, duration) {
-  const el = document.getElementById("timeDisplay");
+  var el = document.getElementById('timeDisplay');
   if (!el) return;
-  el.innerText = formatTime(current) + " / " + formatTime(duration);
+  el.innerText = formatTime(current) + ' / ' + formatTime(duration);
 }
 
 function startProgressTimer() {
   stopProgressTimer();
-  progressTimer = setInterval(() => {
+  progressTimer = setInterval(function() {
     if (!ytPlayer || !ytPlayer.getDuration) return;
     try {
-      const d = ytPlayer.getDuration();
-      const t = ytPlayer.getCurrentTime();
+      var d = ytPlayer.getDuration();
+      var t = ytPlayer.getCurrentTime();
       if (d > 0) setProgress(t / d);
       setTimeDisplay(t, d);
     } catch (e) {}
@@ -522,20 +984,26 @@ function stopProgressTimer() {
   }
 }
 
+/* ═══════════════════════════════════════════════
+   Render Playlist
+   ═══════════════════════════════════════════════ */
 function render() {
-  const div = document.getElementById("playlist");
-  div.innerHTML = "";
+  var div = document.getElementById('playlist');
+  div.innerHTML = '';
 
   if (!playlist.length) {
     div.innerHTML = '<div class="empty-state">No songs yet. Paste a YouTube link above to add one.</div>';
     return;
   }
 
-  playlist.forEach((song, i) => {
-    const item = document.createElement("div");
-    item.className = "song-row" + (i === currentIndex ? " is-playing" : "");
-    item.setAttribute("role", "button");
-    item.setAttribute("tabindex", "0");
+  playlist.forEach(function(song, i) {
+    var item = document.createElement('div');
+    item.className = 'song-row' + (i === currentIndex ? ' is-playing' : '');
+    item.setAttribute('role', 'button');
+    item.setAttribute('tabindex', '0');
+
+    var showRemove = !studentMode && !focusMode;
+
     item.innerHTML =
       '<div class="song-row-thumb">' +
         '<img src="' + thumbUrl(song.id) + '" alt="" loading="lazy">' +
@@ -547,72 +1015,81 @@ function render() {
         '<div class="song-row-title">' + escapeHtml(song.title) + '</div>' +
         (i === currentIndex ? '<div class="song-row-status">Now playing</div>' : '') +
       '</div>' +
-      '<button class="song-row-remove" aria-label="Remove" data-index="' + i + '">✕</button>';
+      (showRemove ? '<button class="song-row-remove" aria-label="Remove" data-index="' + i + '">✕</button>' : '');
 
-    item.addEventListener("click", (e) => {
-      if (e.target.closest(".song-row-remove")) return;
-      if (e.target.closest(".song-row-checkbox")) return;
+    item.addEventListener('click', function(e) {
+      if (e.target.closest('.song-row-remove')) return;
+      if (e.target.closest('.song-row-checkbox')) return;
       play(i);
     });
-    item.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
+    item.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         play(i);
       }
     });
-    const removeBtn = item.querySelector(".song-row-remove");
+
+    var removeBtn = item.querySelector('.song-row-remove');
     if (removeBtn) {
-      removeBtn.addEventListener("click", (e) => {
+      removeBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        const entered = window.prompt("Enter password to remove this song:");
+        if (teacherMode) {
+          deleteSong(i);
+          return;
+        }
+        var entered = window.prompt('Enter password to remove this song:');
         if (entered === null) return;
-        if (entered !== "2222") {
-          window.alert("Incorrect password.");
+        if (entered !== getPassword()) {
+          window.alert('Incorrect password.');
           return;
         }
         deleteSong(i);
       });
     }
+
     if (teacherMode) {
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.className = "song-row-checkbox";
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'song-row-checkbox';
       cb.checked = selectedSongs.has(i);
-      cb.addEventListener("click", function(ev) { ev.stopPropagation(); });
-      cb.addEventListener("change", function() {
+      cb.addEventListener('click', function(ev) { ev.stopPropagation(); });
+      cb.addEventListener('change', function() {
         if (cb.checked) selectedSongs.add(i);
         else selectedSongs.delete(i);
       });
       item.insertBefore(cb, item.firstChild);
-      item.classList.add("has-checkbox");
+      item.classList.add('has-checkbox');
     }
     div.appendChild(item);
   });
 }
 
+/* ═══════════════════════════════════════════════
+   Teacher Tools
+   ═══════════════════════════════════════════════ */
 function unlockTeacher() {
   if (teacherMode) {
     teacherMode = false;
     selectedSongs.clear();
-    document.getElementById("teacherPanel").style.display = "none";
-    document.getElementById("teacherUnlockBtn").innerText = "Teacher Tools";
-    document.getElementById("teacherUnlockBtn").classList.remove("btn-gold");
-    document.getElementById("teacherUnlockBtn").classList.add("btn-outline");
+    document.getElementById('teacherPanel').style.display = 'none';
+    document.getElementById('teacherUnlockBtn').innerText = 'Teacher Tools';
+    document.getElementById('teacherUnlockBtn').classList.remove('btn-gold');
+    document.getElementById('teacherUnlockBtn').classList.add('btn-outline');
     updatePauseUI();
     render();
     return;
   }
-  const pwd = window.prompt("Enter teacher password:");
+  var pwd = window.prompt('Enter teacher password:');
   if (pwd === null) return;
-  if (pwd !== "2222") {
-    window.alert("Incorrect password.");
+  if (pwd !== getPassword()) {
+    window.alert('Incorrect password.');
     return;
   }
   teacherMode = true;
-  document.getElementById("teacherPanel").style.display = "";
-  document.getElementById("teacherUnlockBtn").innerText = "Lock Tools";
-  document.getElementById("teacherUnlockBtn").classList.add("btn-gold");
-  document.getElementById("teacherUnlockBtn").classList.remove("btn-outline");
+  document.getElementById('teacherPanel').style.display = '';
+  document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
+  document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
+  document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
   updatePasteButton();
   updatePauseUI();
   render();
@@ -631,39 +1108,39 @@ function deselectAll() {
 
 function copySelected() {
   if (selectedSongs.size === 0) {
-    alert("No songs selected. Use the checkboxes to select songs first.");
+    alert('No songs selected. Use the checkboxes to select songs first.');
     return;
   }
   var songs = [];
   selectedSongs.forEach(function(i) {
     if (playlist[i]) songs.push({ id: playlist[i].id, title: playlist[i].title });
   });
-  localStorage.setItem("pvs_clipboard", JSON.stringify(songs));
-  alert("Copied " + songs.length + " song(s). Go to another class and click Paste to add them.");
+  localStorage.setItem('pvs_clipboard', JSON.stringify(songs));
+  alert('Copied ' + songs.length + ' song(s). Go to another class and click Paste to add them.');
   updatePasteButton();
 }
 
 function updatePasteButton() {
-  var btn = document.getElementById("pasteBtn");
+  var btn = document.getElementById('pasteBtn');
   if (!btn) return;
-  var clip = localStorage.getItem("pvs_clipboard");
+  var clip = localStorage.getItem('pvs_clipboard');
   var songs = [];
   try { songs = JSON.parse(clip); } catch (e) {}
   if (Array.isArray(songs) && songs.length > 0) {
-    btn.innerText = "Paste " + songs.length + " Song(s)";
+    btn.innerText = 'Paste ' + songs.length + ' Song(s)';
     btn.disabled = false;
   } else {
-    btn.innerText = "Paste Songs";
+    btn.innerText = 'Paste Songs';
     btn.disabled = true;
   }
 }
 
 function pasteSongs() {
-  var clip = localStorage.getItem("pvs_clipboard");
+  var clip = localStorage.getItem('pvs_clipboard');
   var songs = [];
   try { songs = JSON.parse(clip); } catch (e) {}
   if (!Array.isArray(songs) || songs.length === 0) {
-    alert("No songs in clipboard. Copy songs from another class first.");
+    alert('No songs in clipboard. Copy songs from another class first.');
     return;
   }
   var existingIds = new Set(playlist.map(function(s) { return s.id; }));
@@ -671,7 +1148,7 @@ function pasteSongs() {
   for (var j = 0; j < songs.length; j++) {
     var song = songs[j];
     if (song && song.id && !existingIds.has(song.id)) {
-      playlist.push({ id: song.id, title: song.title || "YouTube Video" });
+      playlist.push({ id: song.id, title: song.title || 'YouTube Video' });
       existingIds.add(song.id);
       added++;
     }
@@ -680,18 +1157,21 @@ function pasteSongs() {
     save();
     render();
     var dupes = songs.length - added;
-    alert("Pasted " + added + " new song(s)." + (dupes > 0 ? " " + dupes + " duplicate(s) skipped." : ""));
+    alert('Pasted ' + added + ' new song(s).' + (dupes > 0 ? ' ' + dupes + ' duplicate(s) skipped.' : ''));
   } else {
-    alert("All songs already exist in this playlist.");
+    alert('All songs already exist in this playlist.');
   }
 }
 
+/* ═══════════════════════════════════════════════
+   Pause System
+   ═══════════════════════════════════════════════ */
 async function togglePauseAll() {
   var newState = !classPaused;
   try {
     var res = await fetch(pauseApiUrl, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ paused: newState })
     });
     if (res.ok) {
@@ -703,31 +1183,31 @@ async function togglePauseAll() {
 }
 
 function updatePauseUI() {
-  var btn = document.getElementById("pauseAllBtn");
-  var overlay = document.getElementById("pauseOverlay");
+  var btn = document.getElementById('pauseAllBtn');
+  var overlay = document.getElementById('pauseOverlay');
   if (btn) {
-    btn.innerText = classPaused ? "Resume All" : "Pause All";
+    btn.innerText = classPaused ? 'Resume All' : 'Pause All';
     if (classPaused) {
-      btn.classList.remove("btn-danger");
-      btn.classList.add("btn-gold");
+      btn.classList.remove('btn-danger');
+      btn.classList.add('btn-gold');
     } else {
-      btn.classList.add("btn-danger");
-      btn.classList.remove("btn-gold");
+      btn.classList.add('btn-danger');
+      btn.classList.remove('btn-gold');
     }
   }
   if (classPaused) {
     if (ytPlayer && isPlaying) {
       try { ytPlayer.pauseVideo(); } catch (e) {}
     }
-    if (overlay && !teacherMode) overlay.style.display = "";
+    if (overlay && !teacherMode) overlay.style.display = '';
   } else {
-    if (overlay) overlay.style.display = "none";
+    if (overlay) overlay.style.display = 'none';
   }
 }
 
 async function pollPauseState() {
   try {
-    var res = await fetch(pauseApiUrl, { cache: "no-store" });
+    var res = await fetch(pauseApiUrl, { cache: 'no-store' });
     if (res.ok) {
       var data = await res.json();
       var wasPaused = classPaused;
@@ -742,7 +1222,58 @@ async function pollPauseState() {
   } catch (e) {}
 }
 
+/* ═══════════════════════════════════════════════
+   Keyboard Shortcuts
+   ═══════════════════════════════════════════════ */
+document.addEventListener('keydown', function(e) {
+  var target = e.target;
+  var tag = target && target.tagName;
+  var typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (target && target.isContentEditable);
+  if (typing) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+  if (e.code === 'Space' || e.key === ' ') {
+    e.preventDefault();
+    if (classPaused && !teacherMode) return;
+    togglePlay();
+  } else if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    if (classPaused && !teacherMode) return;
+    next();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    if (classPaused && !teacherMode) return;
+    prev();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    var newVol = Math.min(100, currentVolume + 10);
+    document.getElementById('volumeSlider').value = newVol;
+    setVolume(newVol);
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    var newVol2 = Math.max(0, currentVolume - 10);
+    document.getElementById('volumeSlider').value = newVol2;
+    setVolume(newVol2);
+  }
+});
+
+document.getElementById('linkInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addSong();
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   Initialization
+   ═══════════════════════════════════════════════ */
 async function init() {
+  updateThemeButton();
+  applyModes();
+  initVolume();
+  renderRecentlyPlayed();
+  setupTitleTripleClick();
+
   try {
     playlist = await fetchRemotePlaylist();
   } catch (e) {
@@ -758,35 +1289,6 @@ async function init() {
 }
 
 init();
-
-document.addEventListener("keydown", (e) => {
-  const target = e.target;
-  const tag = target && target.tagName;
-  const typing = tag === "INPUT" || tag === "TEXTAREA" || (target && target.isContentEditable);
-  if (typing) return;
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-
-  if (e.code === "Space" || e.key === " ") {
-    e.preventDefault();
-    if (classPaused && !teacherMode) return;
-    togglePlay();
-  } else if (e.key === "ArrowRight") {
-    e.preventDefault();
-    if (classPaused && !teacherMode) return;
-    next();
-  } else if (e.key === "ArrowLeft") {
-    e.preventDefault();
-    if (classPaused && !teacherMode) return;
-    prev();
-  }
-});
-
-document.getElementById("linkInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    addSong();
-  }
-});
 </script>
 
 </body>

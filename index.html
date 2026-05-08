@@ -2,10 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>PVS SoundSpace</title>
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script>
+    (function(){
+      var f = localStorage.getItem('pvs_force_theme');
+      var t = (f === 'dark' || f === 'light') ? f : (localStorage.getItem('pvs_theme') || 'light');
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
 </head>
 <body>
 
@@ -21,6 +28,7 @@
     </div>
   </div>
   <div class="header-right">
+    <button class="btn btn-ghost theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
     <a class="btn btn-ghost" href="https://pvs-pe-hub.netlify.app/">PE Hub</a>
   </div>
 </header>
@@ -65,6 +73,27 @@
     </a>
   </div>
 </main>
+
+<script>
+function getTheme() {
+  return document.documentElement.getAttribute('data-theme') || 'light';
+}
+function toggleTheme() {
+  document.body.classList.add('theme-transition');
+  var next = getTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('pvs_theme', next);
+  var forced = localStorage.getItem('pvs_force_theme');
+  if (forced && forced !== 'auto') localStorage.setItem('pvs_force_theme', next);
+  updateThemeButton();
+  setTimeout(function(){ document.body.classList.remove('theme-transition'); }, 350);
+}
+function updateThemeButton() {
+  var btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = getTheme() === 'dark' ? '☀️' : '🌙';
+}
+updateThemeButton();
+</script>
 
 </body>
 </html>
