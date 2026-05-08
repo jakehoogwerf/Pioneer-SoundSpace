@@ -116,9 +116,11 @@
     <button class="player-bar-btn" id="prevBtn" onclick="prev()" aria-label="Previous">⏮</button>
     <button class="player-bar-btn player-bar-btn-primary" id="playBtn" onclick="togglePlay()" aria-label="Play/Pause">▶</button>
     <button class="player-bar-btn" id="nextBtn" onclick="next()" aria-label="Next">⏭</button>
+    <button class="player-bar-btn" id="repeatBtn" onclick="cycleRepeat()" aria-label="Repeat">🔁</button>
   </div>
-  <div class="player-bar-progress" aria-hidden="true">
+  <div class="player-bar-progress" id="progressBar" aria-label="Seek" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
     <div class="player-bar-progress-fill" id="progressFill"></div>
+    <div class="player-bar-progress-thumb" id="progressThumb"></div>
   </div>
 </div>
 
@@ -271,6 +273,7 @@ var studentMode = localStorage.getItem('pvs_student_mode') === 'true';
 var focusMode = localStorage.getItem('pvs_focus_mode') === 'true';
 var currentVolume = parseInt(localStorage.getItem('pvs_volume') || '100', 10);
 var isMuted = false;
+var repeatMode = localStorage.getItem('pvs_repeat_mode') || 'none';
 
 /* ═══════════════════════════════════════════════
    Password Management
@@ -842,7 +845,11 @@ function play(index) {
 
 function onPlayerStateChange(e) {
   if (e.data === YT.PlayerState.ENDED) {
-    next();
+    if (repeatMode === 'one') {
+      play(currentIndex);
+    } else {
+      next();
+    }
     return;
   }
   if (e.data === YT.PlayerState.PLAYING) {
@@ -882,6 +889,32 @@ function toggleShuffle() {
   }
 }
 
+function cycleRepeat() {
+  if (repeatMode === 'none') repeatMode = 'all';
+  else if (repeatMode === 'all') repeatMode = 'one';
+  else repeatMode = 'none';
+  localStorage.setItem('pvs_repeat_mode', repeatMode);
+  updateRepeatButton();
+}
+
+function updateRepeatButton() {
+  var btn = document.getElementById('repeatBtn');
+  if (!btn) return;
+  if (repeatMode === 'one') {
+    btn.textContent = '🔂';
+    btn.classList.add('repeat-active');
+    btn.setAttribute('aria-label', 'Repeat: one');
+  } else if (repeatMode === 'all') {
+    btn.textContent = '🔁';
+    btn.classList.add('repeat-active');
+    btn.setAttribute('aria-label', 'Repeat: all');
+  } else {
+    btn.textContent = '🔁';
+    btn.classList.remove('repeat-active');
+    btn.setAttribute('aria-label', 'Repeat: off');
+  }
+}
+
 function next() {
   if (!playlist.length) return;
   if (shuffle && playlist.length > 1) {
@@ -889,7 +922,17 @@ function next() {
     while (n === currentIndex) n = Math.floor(Math.random() * playlist.length);
     currentIndex = n;
   } else {
-    currentIndex = (currentIndex + 1) % playlist.length;
+    var nextIdx = currentIndex + 1;
+    if (nextIdx >= playlist.length) {
+      if (repeatMode === 'none') {
+        isPlaying = false;
+        updatePlayButton();
+        stopProgressTimer();
+        return;
+      }
+      nextIdx = 0;
+    }
+    currentIndex = nextIdx;
   }
   play(currentIndex);
 }
@@ -944,11 +987,16 @@ function updatePlayButton() {
   btn.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
 }
 
+var isSeeking = false;
+
 function setProgress(ratio) {
+  if (isSeeking) return;
   var fill = document.getElementById('progressFill');
+  var thumb = document.getElementById('progressThumb');
   if (!fill) return;
   var pct = Math.max(0, Math.min(1, ratio)) * 100;
   fill.style.width = pct + '%';
+  if (thumb) thumb.style.left = pct + '%';
 }
 
 function formatTime(seconds) {
@@ -983,6 +1031,66 @@ function stopProgressTimer() {
     progressTimer = null;
   }
 }
+
+/* ═══════════════════════════════════════════════
+   Progress Bar Seeking
+   ═══════════════════════════════════════════════ */
+(function initProgressSeeking() {
+  var bar = document.getElementById('progressBar');
+  if (!bar) return;
+
+  function seekToPosition(e) {
+    if (!ytPlayer || !ytPlayer.getDuration) return;
+    var rect = bar.getBoundingClientRect();
+    var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    var ratio = Math.max(0, Math.min(1, x / rect.width));
+    var fill = document.getElementById('progressFill');
+    var thumb = document.getElementById('progressThumb');
+    var pct = ratio * 100;
+    if (fill) fill.style.width = pct + '%';
+    if (thumb) thumb.style.left = pct + '%';
+    var d = ytPlayer.getDuration();
+    if (d > 0) setTimeDisplay(ratio * d, d);
+    return ratio;
+  }
+
+  function onDown(e) {
+    if (!ytPlayer || !ytPlayer.getDuration) return;
+    e.preventDefault();
+    isSeeking = true;
+    bar.classList.add('is-seeking');
+    seekToPosition(e);
+    if (e.type === 'mousedown') {
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    } else {
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onUp);
+    }
+  }
+
+  function onMove(e) {
+    e.preventDefault();
+    seekToPosition(e);
+  }
+
+  function onUp(e) {
+    var ratio = seekToPosition(e.changedTouches ? e.changedTouches[0] : e);
+    isSeeking = false;
+    bar.classList.remove('is-seeking');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+    if (ytPlayer && ytPlayer.getDuration) {
+      var d = ytPlayer.getDuration();
+      if (d > 0) ytPlayer.seekTo(ratio * d, true);
+    }
+  }
+
+  bar.addEventListener('mousedown', onDown);
+  bar.addEventListener('touchstart', onDown, { passive: false });
+})();
 
 /* ═══════════════════════════════════════════════
    Render Playlist
@@ -1271,6 +1379,7 @@ async function init() {
   updateThemeButton();
   applyModes();
   initVolume();
+  updateRepeatButton();
   renderRecentlyPlayed();
   setupTitleTripleClick();
 

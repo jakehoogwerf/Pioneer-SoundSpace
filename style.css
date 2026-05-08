@@ -737,15 +737,52 @@ body.has-player-bar {
 .player-bar-progress {
   position: absolute;
   left: 0; right: 0; top: 0;
-  height: 3px;
+  height: 4px;
   background: rgba(255,255,255,.08);
-  overflow: hidden;
+  overflow: visible;
+  cursor: pointer;
+  z-index: 2;
+  transition: height .15s, top .15s;
+}
+.player-bar-progress:hover,
+.player-bar-progress.is-seeking {
+  height: 8px;
 }
 .player-bar-progress-fill {
   height: 100%;
   width: 0%;
   background: linear-gradient(90deg, var(--accent) 0%, var(--accent-lt) 100%);
   transition: width .4s linear;
+  pointer-events: none;
+}
+.player-bar-progress.is-seeking .player-bar-progress-fill {
+  transition: none;
+}
+.player-bar-progress-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,.3);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform .15s, left .4s linear;
+  pointer-events: none;
+}
+.player-bar-progress:hover .player-bar-progress-thumb,
+.player-bar-progress.is-seeking .player-bar-progress-thumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+.player-bar-progress.is-seeking .player-bar-progress-thumb {
+  transition: transform .15s;
+}
+
+/* Repeat button */
+.player-bar-btn.repeat-active {
+  color: var(--accent-lt);
+  background: rgba(200,149,42,.15);
 }
 
 /* ═══════════════════════════════════════════════
