@@ -616,12 +616,14 @@ async function save() {
     saveQueued = false;
     saveInFlight++;
     try {
+      var snap = JSON.stringify(playlist);
       var res = await fetch(apiUrl, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(playlist)
+        body: snap
       });
       if (res.ok) {
+        lastSavedSnapshot = snap;
         var saved = await res.json();
         if (Array.isArray(saved) && !saveQueued) {
           applyRemotePlaylist(saved);
@@ -637,6 +639,7 @@ async function save() {
 function applyRemotePlaylist(next) {
   var before = currentIndex >= 0 ? playlist[currentIndex] : null;
   playlist = next;
+  lastSavedSnapshot = JSON.stringify(next);
   if (before) {
     var newIdx = playlist.findIndex(function(s){ return s.id === before.id; });
     currentIndex = newIdx;
@@ -678,6 +681,36 @@ function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(pollRemote, POLL_INTERVAL_MS);
 }
+
+/* ═══════════════════════════════════════════════
+   Save-on-Leave  – flush pending saves before the
+   page unloads so navigating to "All Classes" never
+   loses songs.
+   ═══════════════════════════════════════════════ */
+var lastSavedSnapshot = '[]';
+
+function playlistSnapshot() {
+  return JSON.stringify(playlist);
+}
+
+function flushSave() {
+  var snap = playlistSnapshot();
+  if (snap === lastSavedSnapshot && !saveInFlight && !saveQueued) return;
+  try {
+    fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: snap,
+      keepalive: true
+    });
+  } catch (e) {}
+}
+
+window.addEventListener('beforeunload', flushSave);
+
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden') flushSave();
+});
 
 /* ═══════════════════════════════════════════════
    YouTube Helpers
@@ -1560,6 +1593,7 @@ async function init() {
 
   try {
     playlist = await fetchRemotePlaylist();
+    lastSavedSnapshot = JSON.stringify(playlist);
   } catch (e) {
     playlist = [];
   }
