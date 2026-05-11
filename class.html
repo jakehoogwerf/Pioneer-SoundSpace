@@ -611,6 +611,7 @@ async function fetchRemotePlaylist() {
 
 async function save() {
   saveQueued = true;
+  try { localStorage.setItem('pvs_pending_' + classParam, playlistSnapshot()); } catch(e) {}
   if (saveInFlight) return;
   while (saveQueued) {
     saveQueued = false;
@@ -624,6 +625,7 @@ async function save() {
       });
       if (res.ok) {
         lastSavedSnapshot = snap;
+        try { localStorage.removeItem('pvs_pending_' + classParam); } catch(e) {}
         var saved = await res.json();
         if (Array.isArray(saved) && !saveQueued) {
           applyRemotePlaylist(saved);
@@ -696,6 +698,12 @@ function playlistSnapshot() {
 function flushSave() {
   var snap = playlistSnapshot();
   if (snap === lastSavedSnapshot && !saveInFlight && !saveQueued) return;
+  try { localStorage.setItem('pvs_pending_' + classParam, snap); } catch (e) {}
+  if (navigator.sendBeacon) {
+    try {
+      if (navigator.sendBeacon(apiUrl, new Blob([snap], { type: 'application/json' }))) return;
+    } catch (e) {}
+  }
   try {
     fetch(apiUrl, {
       method: 'PUT',
@@ -707,6 +715,7 @@ function flushSave() {
 }
 
 window.addEventListener('beforeunload', flushSave);
+window.addEventListener('pagehide', flushSave);
 
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'hidden') flushSave();
@@ -1596,6 +1605,33 @@ async function init() {
     lastSavedSnapshot = JSON.stringify(playlist);
   } catch (e) {
     playlist = [];
+  }
+
+  var pendingKey = 'pvs_pending_' + classParam;
+  try {
+    var pendingSnap = localStorage.getItem(pendingKey);
+    if (pendingSnap) {
+      var pendingList = JSON.parse(pendingSnap);
+      if (Array.isArray(pendingList) && pendingList.length > 0) {
+        var serverIds = new Set(playlist.map(function(s) { return s.id; }));
+        var recovered = false;
+        for (var p = 0; p < pendingList.length; p++) {
+          if (pendingList[p] && pendingList[p].id && !serverIds.has(pendingList[p].id)) {
+            playlist.push(pendingList[p]);
+            recovered = true;
+          }
+        }
+        if (recovered) {
+          save();
+        } else {
+          localStorage.removeItem(pendingKey);
+        }
+      } else {
+        localStorage.removeItem(pendingKey);
+      }
+    }
+  } catch (e) {
+    try { localStorage.removeItem(pendingKey); } catch(e2) {}
   }
   render();
   updateNowPlaying();

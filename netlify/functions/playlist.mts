@@ -50,7 +50,7 @@ export default async (req: Request, context: Context) => {
     return Response.json(Array.isArray(data) ? data : [])
   }
 
-  if (req.method === 'PUT') {
+  if (req.method === 'PUT' || req.method === 'POST') {
     let body: unknown
     try {
       body = await req.json()
@@ -67,5 +67,5 @@ export default async (req: Request, context: Context) => {
 
 export const config: Config = {
   path: '/api/playlist/:class',
-  method: ['GET', 'PUT'],
+  method: ['GET', 'PUT', 'POST'],
 }
