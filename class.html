@@ -253,7 +253,7 @@
 var MASTER_PASSWORD = 'Jakehoogy_07';
 var DEFAULT_PASSWORD = '2222';
 var ADD_COOLDOWN_MS = 8000;
-var POLL_INTERVAL_MS = 6000;
+var POLL_INTERVAL_MS = 3000; // faster polling so deletes propagate quickly
 var ALL_CLASSES = ['kangaroos','bilby','swans','numbats','bobtails','karak','wombats','PE'];
 
 /* ═══════════════════════════════════════════════
@@ -653,12 +653,16 @@ async function save() {
 
 function applyRemotePlaylist(next) {
   var before = currentIndex >= 0 ? playlist[currentIndex] : null;
+  var beforeIndex = currentIndex; // position of playing song in OLD list
   playlist = next;
   lastSavedSnapshot = JSON.stringify(next);
   if (before) {
     var newIdx = playlist.findIndex(function(s){ return s.id === before.id; });
-    currentIndex = newIdx;
-    if (newIdx === -1) {
+    if (newIdx !== -1) {
+      // Song still exists, just track its new position
+      currentIndex = newIdx;
+    } else {
+      // Playing song was deleted — auto-skip to what was next
       currentIndex = -1;
       isPlaying = false;
       if (ytPlayer && ytPlayer.stopVideo) {
@@ -666,6 +670,11 @@ function applyRemotePlaylist(next) {
       }
       stopProgressTimer();
       setProgress(0);
+      // Play the song that now occupies the deleted song's old position (or last song)
+      if (playlist.length > 0) {
+        var nextIdx = Math.min(beforeIndex, playlist.length - 1);
+        setTimeout(function() { play(nextIdx); }, 300);
+      }
     }
   }
   render();
@@ -867,7 +876,18 @@ function deleteSong(index) {
   } else if (index < currentIndex) {
     currentIndex--;
   }
-  save();
+  // Reset poll timer so the next poll fires AFTER our save lands on the server,
+  // preventing other devices from fetching the old list and restoring the song.
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  save().then(function() {
+    // Restart polling only after the delete has been committed to the server
+    startPolling();
+  });
+
   render();
   updateNowPlaying();
   updatePlayButton();
