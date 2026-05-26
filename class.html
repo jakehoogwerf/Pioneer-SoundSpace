@@ -138,9 +138,10 @@
 <!-- Pause Overlay -->
 <div id="pauseOverlay" class="pause-overlay" style="display:none;">
   <div class="pause-overlay-content">
-    <div class="pause-overlay-icon">||</div>
-    <h3>Playback Paused</h3>
-    <p>Your teacher has paused playback for this class.</p>
+    <div class="pause-overlay-icon" id="pauseOverlayIcon">||</div>
+    <h3 id="pauseOverlayTitle">Playback Paused</h3>
+    <p id="pauseOverlayText">Your teacher has paused playback for this class.</p>
+    <button class="btn btn-outline btn-sm" id="pauseTeacherBtn" onclick="unlockFromOverlay()" style="margin-top:18px;opacity:.6;font-size:11px;">I&rsquo;m the teacher</button>
   </div>
 </div>
 
@@ -1399,6 +1400,27 @@ function pasteSongs() {
 /* ═══════════════════════════════════════════════
    Pause System
    ═══════════════════════════════════════════════ */
+
+// Called from the "I'm the teacher" button on the pause overlay.
+// Lets a teacher on a fresh tab/device authenticate and immediately dismiss the overlay.
+function unlockFromOverlay() {
+  var pwd = window.prompt('Enter teacher password to dismiss:');
+  if (pwd === null) return;
+  if (pwd !== getPassword() && pwd !== MASTER_PASSWORD) {
+    window.alert('Incorrect password.');
+    return;
+  }
+  // Activate teacher mode so the overlay stays hidden
+  teacherMode = true;
+  sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
+  document.getElementById('teacherPanel').style.display = '';
+  document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
+  document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
+  document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
+  updatePasteButton();
+  updatePauseUI(); // this will now hide the overlay because teacherMode === true
+}
+
 async function togglePauseAll() {
   var newState = !classPaused;
   try {
@@ -1441,9 +1463,9 @@ function updatePauseUI() {
   var btn = document.getElementById('pauseAllBtn');
   var lockBtn = document.getElementById('lockAllBtn');
   var overlay = document.getElementById('pauseOverlay');
-  var overlayIcon = overlay ? overlay.querySelector('.pause-overlay-icon') : null;
-  var overlayTitle = overlay ? overlay.querySelector('h3') : null;
-  var overlayText = overlay ? overlay.querySelector('p') : null;
+  var overlayIcon = document.getElementById('pauseOverlayIcon');
+  var overlayTitle = document.getElementById('pauseOverlayTitle');
+  var overlayText = document.getElementById('pauseOverlayText');
 
   if (btn) {
     btn.innerText = classPaused ? 'Resume All' : 'Pause All';
