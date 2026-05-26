@@ -1285,7 +1285,6 @@ body.has-player-bar {
    Mode overrides
    ═══════════════════════════════════════════════ */
 .student-mode .song-row-remove { display: none !important; }
-.student-mode #teacherUnlockBtn { display: none; }
 .student-mode #shuffleBtn { display: none; }
 
 .focus-mode #addSongPanel { display: none; }
