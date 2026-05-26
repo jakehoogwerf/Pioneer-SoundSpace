@@ -1284,7 +1284,6 @@ body.has-player-bar {
 /* ═══════════════════════════════════════════════
    Mode overrides
    ═══════════════════════════════════════════════ */
-.student-mode #addSongPanel { display: none; }
 .student-mode .song-row-remove { display: none !important; }
 .student-mode #teacherUnlockBtn { display: none; }
 .student-mode #shuffleBtn { display: none; }
