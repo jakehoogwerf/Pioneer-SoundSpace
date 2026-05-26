@@ -85,6 +85,14 @@
           <button class="btn btn-danger btn-sm" id="pauseAllBtn" onclick="togglePauseAll()">Pause All</button>
           <button class="btn btn-outline btn-sm" id="lockAllBtn" onclick="toggleLockAll()">🔒 Lock Playback</button>
         </div>
+        <div class="teacher-btn-group teacher-schedule-group" id="scheduleGroup">
+          <label style="font-size:12px;font-weight:600;color:var(--text-muted);align-self:center;">⏰ Schedule:</label>
+          <input type="time" id="scheduleStart" class="schedule-time-input" title="Auto-play at this time">
+          <span style="font-size:12px;color:var(--text-muted);align-self:center;">to</span>
+          <input type="time" id="scheduleEnd" class="schedule-time-input" title="Auto-pause at this time">
+          <button class="btn btn-outline btn-sm" id="scheduleBtn" onclick="toggleSchedule()">Set Schedule</button>
+          <span id="scheduleStatus" style="font-size:11px;color:var(--text-muted);align-self:center;"></span>
+        </div>
       </div>
     </div>
     <div id="playlist"></div>
@@ -104,7 +112,9 @@
       <div class="player-bar-label">Now Playing</div>
       <div class="player-bar-title-wrap">
         <span class="eq eq-bar" id="playerBarEq" aria-hidden="true"><i></i><i></i><i></i></span>
-        <div class="player-bar-title" id="nowPlaying">Nothing playing</div>
+        <div class="player-bar-title-scroll" id="titleScrollWrap">
+          <div class="player-bar-title" id="nowPlaying">Nothing playing</div>
+        </div>
       </div>
     </div>
   </div>
@@ -764,15 +774,19 @@ async function addSong() {
   if (!id) { alert('Invalid YouTube link'); return; }
 
   lastAddTime = now;
-  var song = { id: id, title: 'Loading…' };
-  playlist.push(song);
-  save();
-  render();
   inputEl.value = '';
   startCooldown();
 
+  // Show placeholder row immediately — but don't save to server yet.
+  // Saving "Loading…" titles causes stale data if a poll fires mid-fetch.
+  var song = { id: id, title: 'Loading…', _pending: true };
+  playlist.push(song);
+  render();
+
+  // Fetch real title before persisting to server
   var title = await fetchTitle(id);
   song.title = title || 'YouTube Video';
+  delete song._pending;
   save();
   render();
 }
@@ -825,6 +839,7 @@ async function backfillTitles() {
 }
 
 function deleteSong(index) {
+  var song = playlist[index];
   var wasPlaying = index === currentIndex;
   playlist.splice(index, 1);
   if (wasPlaying) {
@@ -842,6 +857,52 @@ function deleteSong(index) {
   render();
   updateNowPlaying();
   updatePlayButton();
+
+  // Ban the song so it disappears from recently-played on ALL devices.
+  if (song && song.id) banSong(song.id);
+}
+
+/* ═══════════════════════════════════════════════
+   Banned Songs — purge deleted songs from Recently Played everywhere
+   ═══════════════════════════════════════════════ */
+var bannedApiUrl = '/api/banned/' + encodeURIComponent(classParam);
+var bannedIds = new Set();
+
+async function loadBanned() {
+  try {
+    var res = await fetch(bannedApiUrl, { cache: 'no-store' });
+    if (res.ok) {
+      var data = await res.json();
+      if (Array.isArray(data)) {
+        bannedIds = new Set(data);
+        purgeBannedFromRecent();
+      }
+    }
+  } catch (e) {}
+}
+
+async function banSong(id) {
+  bannedIds.add(id);
+  purgeBannedFromRecent();
+  try {
+    await fetch(bannedApiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Array.from(bannedIds))
+    });
+  } catch (e) {}
+}
+
+function purgeBannedFromRecent() {
+  if (bannedIds.size === 0) return;
+  try {
+    var recent = JSON.parse(localStorage.getItem('pvs_recently_played') || '[]');
+    var filtered = recent.filter(function(s) { return !bannedIds.has(s.id); });
+    if (filtered.length !== recent.length) {
+      localStorage.setItem('pvs_recently_played', JSON.stringify(filtered));
+      renderRecentlyPlayed();
+    }
+  } catch (e) {}
 }
 
 /* ═══════════════════════════════════════════════
@@ -899,6 +960,7 @@ function play(index) {
   setProgress(0);
   setTimeDisplay(0, 0);
   startProgressTimer();
+  startNormalisation();
 }
 
 function onPlayerStateChange(e) {
@@ -1020,6 +1082,7 @@ function updateNowPlaying() {
   var eq = document.getElementById('playerBarEq');
   if (currentIndex >= 0 && playlist[currentIndex]) {
     if (el) el.innerText = playlist[currentIndex].title || 'YouTube Video';
+    updateMarquee();
     if (thumb) {
       thumb.style.backgroundImage = "url('" + thumbUrl(playlist[currentIndex].id) + "')";
       thumb.classList.add('has-art');
@@ -1592,6 +1655,155 @@ function toggleAnalyticsClass(header) {
 }
 
 /* ═══════════════════════════════════════════════
+   Schedule Play — auto-start/stop at set times
+   ═══════════════════════════════════════════════ */
+var scheduleActive = false;
+var scheduleTimer = null;
+var scheduleStartTime = null; // "HH:MM"
+var scheduleEndTime = null;
+
+function toggleSchedule() {
+  if (scheduleActive) {
+    clearSchedule();
+    return;
+  }
+  var startVal = document.getElementById('scheduleStart').value;
+  var endVal = document.getElementById('scheduleEnd').value;
+  if (!startVal || !endVal) {
+    alert('Please set both a start and end time.');
+    return;
+  }
+  scheduleStartTime = startVal;
+  scheduleEndTime = endVal;
+  scheduleActive = true;
+  document.getElementById('scheduleBtn').innerText = 'Clear Schedule';
+  document.getElementById('scheduleBtn').classList.add('btn-gold');
+  document.getElementById('scheduleBtn').classList.remove('btn-outline');
+  updateScheduleStatus();
+  scheduleTimer = setInterval(tickSchedule, 10000);
+  tickSchedule();
+}
+
+function clearSchedule() {
+  scheduleActive = false;
+  scheduleStartTime = null;
+  scheduleEndTime = null;
+  if (scheduleTimer) { clearInterval(scheduleTimer); scheduleTimer = null; }
+  var btn = document.getElementById('scheduleBtn');
+  if (btn) { btn.innerText = 'Set Schedule'; btn.classList.remove('btn-gold'); btn.classList.add('btn-outline'); }
+  var status = document.getElementById('scheduleStatus');
+  if (status) status.innerText = '';
+}
+
+function timeToMins(hhmm) {
+  var parts = hhmm.split(':');
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+function tickSchedule() {
+  if (!scheduleActive) return;
+  var now = new Date();
+  var curMins = now.getHours() * 60 + now.getMinutes();
+  var startMins = timeToMins(scheduleStartTime);
+  var endMins = timeToMins(scheduleEndTime);
+  var inWindow = startMins <= endMins
+    ? (curMins >= startMins && curMins < endMins)
+    : (curMins >= startMins || curMins < endMins); // overnight
+
+  if (inWindow) {
+    if (!isPlaying && playlist.length > 0) {
+      if (currentIndex < 0) play(0);
+      else { try { ytPlayer && ytPlayer.playVideo(); isPlaying = true; updatePlayButton(); } catch(e){} }
+    }
+  } else {
+    if (isPlaying) {
+      try { ytPlayer && ytPlayer.pauseVideo(); } catch(e){}
+    }
+  }
+  updateScheduleStatus();
+}
+
+function updateScheduleStatus() {
+  var el = document.getElementById('scheduleStatus');
+  if (!el || !scheduleActive) return;
+  var now = new Date();
+  var curMins = now.getHours() * 60 + now.getMinutes();
+  var startMins = timeToMins(scheduleStartTime);
+  var endMins = timeToMins(scheduleEndTime);
+  var inWindow = startMins <= endMins
+    ? (curMins >= startMins && curMins < endMins)
+    : (curMins >= startMins || curMins < endMins);
+  el.innerText = inWindow ? '▶ Playing' : '⏸ Waiting…';
+  el.style.color = inWindow ? 'var(--gold)' : 'var(--text-muted)';
+}
+
+/* ═══════════════════════════════════════════════
+   Auto Volume Normalisation
+   Smoothly adjusts playback volume when a new track starts
+   so very quiet or very loud videos stay comfortable.
+   ═══════════════════════════════════════════════ */
+var TARGET_VOLUME = 80;   // ideal playback level
+var NORM_TOLERANCE = 12;  // don't nudge if already within this range
+var normTimer = null;
+
+function startNormalisation() {
+  // Wait 3 s after song starts (buffering / ads settle) then sample and adjust
+  if (normTimer) clearTimeout(normTimer);
+  normTimer = setTimeout(function() {
+    if (!ytPlayer || !ytPlayer.getVolume) return;
+    try {
+      // YouTube volume is 0-100. We use the player's own volume as a proxy for
+      // "where the user had it" and nudge toward TARGET_VOLUME if far off.
+      var cur = ytPlayer.getVolume();
+      if (Math.abs(cur - TARGET_VOLUME) > NORM_TOLERANCE) {
+        var steps = 20;
+        var delta = (TARGET_VOLUME - cur) / steps;
+        var step = 0;
+        var ramp = setInterval(function() {
+          if (!ytPlayer || step >= steps) { clearInterval(ramp); return; }
+          cur += delta;
+          var v = Math.round(Math.max(0, Math.min(100, cur)));
+          try { ytPlayer.setVolume(v); } catch(e){}
+          step++;
+          if (step >= steps) {
+            clearInterval(ramp);
+            currentVolume = TARGET_VOLUME;
+            var slider = document.getElementById('volumeSlider');
+            if (slider) slider.value = TARGET_VOLUME;
+            localStorage.setItem('pvs_volume', TARGET_VOLUME);
+            updateVolumeIcon();
+          }
+        }, 80);
+      }
+    } catch(e) {}
+  }, 3000);
+}
+
+/* ═══════════════════════════════════════════════
+   Marquee — scroll long titles in the player bar
+   ═══════════════════════════════════════════════ */
+function updateMarquee() {
+  var wrap = document.getElementById('titleScrollWrap');
+  var el = document.getElementById('nowPlaying');
+  if (!wrap || !el) return;
+  el.style.animation = 'none';
+  el.style.transform = 'translateX(0)';
+  requestAnimationFrame(function() {
+    var textW = el.scrollWidth;
+    var wrapW = wrap.offsetWidth;
+    if (textW > wrapW + 4) {
+      var overflow = textW - wrapW;
+      var duration = Math.max(4, overflow / 40); // ~40px/s
+      wrap.style.setProperty('--marquee-offset', '-' + overflow + 'px');
+      el.style.animation = 'marquee-scroll ' + duration + 's linear 1.5s infinite alternate';
+    } else {
+      wrap.style.removeProperty('--marquee-offset');
+      el.style.animation = 'none';
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
    Initialization
    ═══════════════════════════════════════════════ */
 async function init() {
@@ -1639,6 +1851,8 @@ async function init() {
   updateNowPlaying();
   updatePlayButton();
   backfillTitles();
+  loadBanned();
+  setInterval(loadBanned, 15000); // re-poll ban list so deleted songs vanish everywhere
   startPolling();
   pollPauseState();
   setInterval(pollPauseState, 3000);
