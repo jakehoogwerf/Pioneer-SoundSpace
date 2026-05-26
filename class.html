@@ -854,17 +854,20 @@ async function backfillTitles() {
   }
 }
 
-function deleteSong(index) {
+async function deleteSong(index) {
   var song = playlist[index];
   var wasPlaying = index === currentIndex;
+  var wasIndex = index;
 
-  // Remember this ID so pollRemote can't restore it while the save is in-flight
+  // 1. Remove locally and update UI immediately
   if (song && song.id) {
     recentlyDeletedIds.add(song.id);
-    setTimeout(function() { recentlyDeletedIds.delete(song.id); }, 15000);
+    // Keep in the set for 30s as a safety net
+    setTimeout(function() { recentlyDeletedIds.delete(song.id); }, 30000);
   }
 
   playlist.splice(index, 1);
+
   if (wasPlaying) {
     currentIndex = -1;
     isPlaying = false;
@@ -873,26 +876,37 @@ function deleteSong(index) {
     }
     stopProgressTimer();
     setProgress(0);
+    // Auto-play next song
+    if (playlist.length > 0) {
+      var nextIdx = Math.min(wasIndex, playlist.length - 1);
+      setTimeout(function() { play(nextIdx); }, 200);
+    }
   } else if (index < currentIndex) {
     currentIndex--;
   }
-  // Reset poll timer so the next poll fires AFTER our save lands on the server,
-  // preventing other devices from fetching the old list and restoring the song.
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-
-  save().then(function() {
-    // Restart polling only after the delete has been committed to the server
-    startPolling();
-  });
 
   render();
   updateNowPlaying();
   updatePlayButton();
 
-  // Ban the song so it disappears from recently-played on ALL devices.
+  // 2. Stop polling while we commit the delete
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+
+  // 3. Directly PUT the new playlist — don't go through the save() queue
+  //    which may be in-flight and returns early
+  lastSavedSnapshot = JSON.stringify(playlist);
+  try {
+    await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: lastSavedSnapshot
+    });
+  } catch(e) {}
+
+  // 4. Restart polling now that the server has the updated list
+  startPolling();
+
+  // 5. Ban from recently-played on all devices
   if (song && song.id) banSong(song.id);
 }
 
