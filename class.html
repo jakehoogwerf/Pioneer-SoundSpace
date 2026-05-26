@@ -290,6 +290,7 @@ var cooldownTimer = null;
 var saveInFlight = 0;
 var saveQueued = false;
 var pollTimer = null;
+var recentlyDeletedIds = new Set(); // songs deleted locally — ignore if server sends them back
 
 var studentMode = localStorage.getItem('pvs_student_mode') === 'true';
 var focusMode = localStorage.getItem('pvs_focus_mode') === 'true';
@@ -677,9 +678,12 @@ async function pollRemote() {
   if (document.hidden) return;
   try {
     var next = await fetchRemotePlaylist();
-    // Guard: never silently replace a non-empty local playlist with an empty server
-    // response — that indicates a backend glitch, not a real clear.
+    // Guard: never silently replace a non-empty local playlist with an empty server response
     if (next.length === 0 && playlist.length > 0) return;
+    // Strip any songs the user just deleted (server may not have saved yet)
+    if (recentlyDeletedIds.size > 0) {
+      next = next.filter(function(s) { return !recentlyDeletedIds.has(s.id); });
+    }
     if (!playlistsEqual(playlist, next)) {
       applyRemotePlaylist(next);
     }
@@ -844,6 +848,13 @@ async function backfillTitles() {
 function deleteSong(index) {
   var song = playlist[index];
   var wasPlaying = index === currentIndex;
+
+  // Remember this ID so pollRemote can't restore it while the save is in-flight
+  if (song && song.id) {
+    recentlyDeletedIds.add(song.id);
+    setTimeout(function() { recentlyDeletedIds.delete(song.id); }, 15000);
+  }
+
   playlist.splice(index, 1);
   if (wasPlaying) {
     currentIndex = -1;
