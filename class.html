@@ -72,7 +72,7 @@
       <h3>Playlist</h3>
       <div class="panel-head-actions">
         <button class="btn btn-outline btn-sm" id="shuffleBtn" onclick="toggleShuffle()">Shuffle: Off</button>
-        <button class="btn btn-outline btn-sm" id="teacherUnlockBtn" onclick="unlockTeacher()" style="display:none">Teacher Tools</button>
+        <button class="btn btn-outline btn-sm" id="teacherUnlockBtn" onclick="unlockTeacher()">Teacher Tools</button>
       </div>
     </div>
     <div id="teacherPanel" class="teacher-panel" style="display:none;">
@@ -348,9 +348,9 @@ function updateThemeButton() {
 function applyModes() {
   document.body.classList.toggle('student-mode', studentMode);
   document.body.classList.toggle('focus-mode', focusMode);
-  // Teacher Tools button only visible when not in student view
-  var teacherBtn = document.getElementById('teacherUnlockBtn');
-  if (teacherBtn) teacherBtn.style.display = (studentMode && !teacherMode) ? 'none' : '';
+  // Add panel visible only when teacher mode is active
+  var addPanel = document.getElementById('addSongPanel');
+  if (addPanel) addPanel.style.display = teacherMode ? '' : 'none';
 }
 
 /* ═══════════════════════════════════════════════
@@ -590,6 +590,7 @@ function toggleAdminTeacher() {
     sessionStorage.setItem('pvs_teacher_' + classParam, 'false');
     selectedSongs.clear();
     document.getElementById('teacherPanel').style.display = 'none';
+    document.getElementById('addSongPanel').style.display = 'none';
     document.getElementById('teacherUnlockBtn').innerText = 'Teacher Tools';
     document.getElementById('teacherUnlockBtn').classList.remove('btn-gold');
     document.getElementById('teacherUnlockBtn').classList.add('btn-outline');
@@ -1365,6 +1366,7 @@ function unlockTeacher() {
   teacherMode = true;
   sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
   document.getElementById('teacherPanel').style.display = '';
+  document.getElementById('addSongPanel').style.display = '';
   document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
   document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
   document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
@@ -1458,6 +1460,7 @@ function unlockFromOverlay() {
   teacherMode = true;
   sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
   document.getElementById('teacherPanel').style.display = '';
+  document.getElementById('addSongPanel').style.display = '';
   document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
   document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
   document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
@@ -1928,9 +1931,12 @@ async function init() {
   // Restore teacher UI if session had it active
   if (teacherMode) {
     document.getElementById('teacherPanel').style.display = '';
+    document.getElementById('addSongPanel').style.display = '';
     document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
     document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
     document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
+  } else {
+    document.getElementById('addSongPanel').style.display = 'none';
   }
 
   try {
