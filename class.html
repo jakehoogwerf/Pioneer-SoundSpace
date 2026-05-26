@@ -626,10 +626,9 @@ async function save() {
       if (res.ok) {
         lastSavedSnapshot = snap;
         try { localStorage.removeItem('pvs_pending_' + classParam); } catch(e) {}
-        var saved = await res.json();
-        if (Array.isArray(saved) && !saveQueued) {
-          applyRemotePlaylist(saved);
-        }
+        // Do NOT applyRemotePlaylist() here — the server response may be stale or empty,
+        // which would wipe the local playlist. The polling loop (pollRemote) handles
+        // syncing from the server on its own schedule.
       }
     } catch (e) {
     } finally {
@@ -665,6 +664,9 @@ async function pollRemote() {
   if (document.hidden) return;
   try {
     var next = await fetchRemotePlaylist();
+    // Guard: never silently replace a non-empty local playlist with an empty server
+    // response — that indicates a backend glitch, not a real clear.
+    if (next.length === 0 && playlist.length > 0) return;
     if (!playlistsEqual(playlist, next)) {
       applyRemotePlaylist(next);
     }
