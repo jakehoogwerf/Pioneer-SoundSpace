@@ -40,28 +40,30 @@
     <h2 class="page-title" id="classTitle">Class</h2>
     <button class="admin-trigger" id="adminTrigger" onclick="openAdmin()" aria-label="Settings" title="Settings">⚙</button>
   </div>
-  <p class="page-subtitle">Add YouTube links to build a playlist for this class.</p>
+  <p class="page-subtitle">Teacher-curated playlist — sit back and enjoy the music.</p>
 
   <!-- Add Song Panel -->
   <div class="panel" id="addSongPanel">
-    <h3>Add a Song</h3>
+    <h3>Add to Playlist</h3>
     <div class="controls">
       <input id="linkInput" placeholder="Paste a YouTube link…" inputmode="url">
       <button class="btn btn-gold btn-lg" id="addBtn" onclick="addSong()">Add Song</button>
     </div>
-    <div class="cooldown-hint" id="cooldownHint" aria-live="polite"></div>
-    <div class="kbd-hint" aria-hidden="true">
-      <span><kbd>Space</kbd> play/pause</span>
-      <span><kbd>←</kbd> previous</span>
-      <span><kbd>→</kbd> next</span>
-      <span><kbd>↑↓</kbd> volume</span>
-    </div>
+
   </div>
 
   <!-- Recently Played -->
   <div class="panel" id="recentPanel" style="display:none;">
-    <h3>Recently Played</h3>
+    <h3>Listening History</h3>
     <div id="recentlyPlayed" class="recent-list"></div>
+  </div>
+
+  <!-- Most Played Panel -->
+  <div class="panel" id="mostPlayedPanel" style="display:none;">
+    <div class="panel-head">
+      <h3>🏆 Most Played</h3>
+    </div>
+    <div id="mostPlayedList" class="most-played-list"></div>
   </div>
 
   <!-- Playlist Panel -->
@@ -70,7 +72,7 @@
       <h3>Playlist</h3>
       <div class="panel-head-actions">
         <button class="btn btn-outline btn-sm" id="shuffleBtn" onclick="toggleShuffle()">Shuffle: Off</button>
-        <button class="btn btn-outline btn-sm" id="teacherUnlockBtn" onclick="unlockTeacher()">Teacher Tools</button>
+        <button class="btn btn-outline btn-sm" id="teacherUnlockBtn" onclick="unlockTeacher()" style="display:none">Teacher Tools</button>
       </div>
     </div>
     <div id="teacherPanel" class="teacher-panel" style="display:none;">
@@ -186,7 +188,7 @@
         <div class="admin-toggle">
           <div class="toggle-row">
             <div class="toggle-info">
-              <span>Teacher Edit Mode</span>
+              <span>Teacher Mode</span>
             </div>
             <label class="toggle-switch">
               <input type="checkbox" id="adminTeacherToggle" onchange="toggleAdminTeacher()">
@@ -197,8 +199,8 @@
         <div class="admin-toggle">
           <div class="toggle-row">
             <div class="toggle-info">
-              <span>Student Safe Mode</span>
-              <small>Hides add/delete — playback only</small>
+              <span>Student View (Default)</span>
+              <small>Playback only — students cannot add or delete songs</small>
             </div>
             <label class="toggle-switch">
               <input type="checkbox" id="adminStudentToggle" onchange="toggleAdminStudent()">
@@ -292,7 +294,7 @@ var saveQueued = false;
 var pollTimer = null;
 var recentlyDeletedIds = new Set(); // songs deleted locally — ignore if server sends them back
 
-var studentMode = localStorage.getItem('pvs_student_mode') === 'true';
+var studentMode = localStorage.getItem('pvs_student_mode') !== 'false'; // default ON — teacher unlocks
 var focusMode = localStorage.getItem('pvs_focus_mode') === 'true';
 var currentVolume = parseInt(localStorage.getItem('pvs_volume') || '100', 10);
 var isMuted = false;
@@ -346,6 +348,9 @@ function updateThemeButton() {
 function applyModes() {
   document.body.classList.toggle('student-mode', studentMode);
   document.body.classList.toggle('focus-mode', focusMode);
+  // Teacher Tools button only visible when not in student view
+  var teacherBtn = document.getElementById('teacherUnlockBtn');
+  if (teacherBtn) teacherBtn.style.display = (studentMode && !teacherMode) ? 'none' : '';
 }
 
 /* ═══════════════════════════════════════════════
@@ -781,17 +786,11 @@ async function fetchTitle(id) {
    Add / Delete Songs
    ═══════════════════════════════════════════════ */
 async function addSong() {
-  var now = Date.now();
-  var remaining = ADD_COOLDOWN_MS - (now - lastAddTime);
-  if (remaining > 0) { showCooldown(remaining); return; }
-
   var inputEl = document.getElementById('linkInput');
   var id = extractID(inputEl.value);
   if (!id) { alert('Invalid YouTube link'); return; }
 
-  lastAddTime = now;
   inputEl.value = '';
-  startCooldown();
 
   // Show placeholder row immediately — but don't save to server yet.
   // Saving "Loading…" titles causes stale data if a poll fires mid-fetch.
@@ -1269,7 +1268,7 @@ function render() {
   div.innerHTML = '';
 
   if (!playlist.length) {
-    div.innerHTML = '<div class="empty-state">No songs yet. Paste a YouTube link above to add one.</div>';
+    div.innerHTML = '<div class="empty-state">No songs yet. Your teacher hasn’t added any songs to this playlist.</div>';
     return;
   }
 
@@ -1875,6 +1874,48 @@ function updateMarquee() {
 }
 
 /* ═══════════════════════════════════════════════
+   Most Played
+   ═══════════════════════════════════════════════ */
+async function renderMostPlayed() {
+  var panel = document.getElementById('mostPlayedPanel');
+  var list = document.getElementById('mostPlayedList');
+  if (!panel || !list) return;
+  try {
+    var res = await fetch('/api/analytics/' + encodeURIComponent(classParam), { cache: 'no-store' });
+    if (!res.ok) { panel.style.display = 'none'; return; }
+    var data = await res.json();
+    var songs = Array.isArray(data) ? data : (data.songs || []);
+    var byId = {};
+    playlist.forEach(function(s) { byId[s.id] = s; });
+    songs = songs.filter(function(s) { return s.count > 0; })
+                 .sort(function(a,b) { return b.count - a.count; })
+                 .slice(0, 5);
+    if (songs.length === 0) { panel.style.display = 'none'; return; }
+    panel.style.display = '';
+    var medals = ['🥇','🥈','🥉','⭐','⭐'];
+    list.innerHTML = songs.map(function(s, i) {
+      var thumb = 'https://img.youtube.com/vi/' + s.id + '/mqdefault.jpg';
+      var title = (byId[s.id] && byId[s.id].title) || s.title || 'Unknown';
+      var pct = songs[0].count > 0 ? Math.round((s.count / songs[0].count) * 100) : 0;
+      return '<div class="most-played-row" onclick="playById(\'' + s.id + '\')">' +
+        '<span class="most-played-medal">' + medals[i] + '</span>' +
+        '<img class="most-played-thumb" src="' + thumb + '" alt="">' +
+        '<div class="most-played-info">' +
+          '<div class="most-played-title">' + escapeHtml(title) + '</div>' +
+          '<div class="most-played-bar"><div class="most-played-fill" style="width:' + pct + '%"></div></div>' +
+        '</div>' +
+        '<span class="most-played-count">' + s.count + '<small>plays</small></span>' +
+      '</div>';
+    }).join('');
+  } catch(e) { panel.style.display = 'none'; }
+}
+
+function playById(id) {
+  var idx = playlist.findIndex(function(s) { return s.id === id; });
+  if (idx !== -1) play(idx);
+}
+
+/* ═══════════════════════════════════════════════
    Initialization
    ═══════════════════════════════════════════════ */
 async function init() {
@@ -1933,6 +1974,8 @@ async function init() {
   setInterval(loadBanned, 15000); // re-poll ban list so deleted songs vanish everywhere
   startPolling();
   pollPauseState();
+  renderMostPlayed();
+  setInterval(renderMostPlayed, 30000);
   setInterval(pollPauseState, 3000);
 }
 
