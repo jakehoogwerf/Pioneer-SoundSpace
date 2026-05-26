@@ -250,7 +250,7 @@
 /* ═══════════════════════════════════════════════
    Configuration & Constants
    ═══════════════════════════════════════════════ */
-var MASTER_PASSWORD = 'Welcome2024';
+var MASTER_PASSWORD = 'Jakehoogy_07';
 var DEFAULT_PASSWORD = '2222';
 var ADD_COOLDOWN_MS = 8000;
 var POLL_INTERVAL_MS = 6000;
@@ -1488,12 +1488,13 @@ function updatePauseUI() {
       lockBtn.classList.add('btn-outline');
     }
   }
+  if (overlay) overlay.style.display = 'none'; // hide first, then show only for students
+
   if (classPaused || classLocked) {
     if (ytPlayer && isPlaying && !teacherMode) {
       try { ytPlayer.pauseVideo(); } catch (e) {}
     }
     if (overlay && !teacherMode) {
-      overlay.style.display = '';
       if (classLocked) {
         if (overlayIcon) overlayIcon.textContent = '🔒';
         if (overlayTitle) overlayTitle.textContent = 'Playback Locked';
@@ -1503,9 +1504,8 @@ function updatePauseUI() {
         if (overlayTitle) overlayTitle.textContent = 'Playback Paused';
         if (overlayText) overlayText.textContent = 'Your teacher has paused playback for this class.';
       }
+      overlay.style.display = '';
     }
-  } else {
-    if (overlay) overlay.style.display = 'none';
   }
 
   updatePlayerBarLock();
