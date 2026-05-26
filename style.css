@@ -1357,3 +1357,12 @@ body.has-player-bar {
   .home-card .card-name { font-size: 18px; }
   .panel { padding: 16px; }
 }
+
+/* "I'm the teacher" button on pause overlay */
+#pauseTeacherBtn {
+  margin-top: 18px;
+  opacity: .5;
+  font-size: 11px;
+  transition: opacity .2s;
+}
+#pauseTeacherBtn:hover { opacity: 1; }
