@@ -617,14 +617,15 @@ body.has-player-bar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background .15s, color .15s;
-  opacity: 0;
+  transition: background .15s, color .15s, opacity .15s;
+  opacity: 0.25;
 }
 .song-row:hover .song-row-remove,
 .song-row.is-playing .song-row-remove { opacity: 1; }
 .song-row-remove:hover {
   background: var(--danger-bg);
   color: var(--danger-text);
+  opacity: 1;
 }
 
 .empty-state {
@@ -1312,7 +1313,6 @@ body.has-player-bar {
   .song-row { grid-template-columns: 58px 1fr auto; gap: 10px; }
   .song-row.has-checkbox { grid-template-columns: 24px 58px 1fr auto; }
   .song-row-thumb { width: 58px; height: 44px; }
-  .song-row-remove { opacity: 1; }
   .player-bar { padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px)); gap: 10px; }
   .player-bar-thumb { width: 42px; height: 42px; }
   .player-bar-btn { width: 42px; height: 42px; font-size: 16px; }
