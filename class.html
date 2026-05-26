@@ -279,7 +279,7 @@ var pendingPlay = null;
 var isPlaying = false;
 var progressTimer = null;
 
-var teacherMode = false;
+var teacherMode = sessionStorage.getItem('pvs_teacher_' + (new URLSearchParams(window.location.search).get('class') || 'default')) === 'true';
 var selectedSongs = new Set();
 var classPaused = false;
 var classLocked = false;
@@ -570,6 +570,7 @@ function toggleAdminTeacher() {
   var checked = document.getElementById('adminTeacherToggle').checked;
   if (checked && !teacherMode) {
     teacherMode = true;
+    sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
     document.getElementById('teacherPanel').style.display = '';
     document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
     document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
@@ -579,6 +580,7 @@ function toggleAdminTeacher() {
     render();
   } else if (!checked && teacherMode) {
     teacherMode = false;
+    sessionStorage.setItem('pvs_teacher_' + classParam, 'false');
     selectedSongs.clear();
     document.getElementById('teacherPanel').style.display = 'none';
     document.getElementById('teacherUnlockBtn').innerText = 'Teacher Tools';
@@ -1299,6 +1301,7 @@ function render() {
 function unlockTeacher() {
   if (teacherMode) {
     teacherMode = false;
+    sessionStorage.setItem('pvs_teacher_' + classParam, 'false');
     selectedSongs.clear();
     document.getElementById('teacherPanel').style.display = 'none';
     document.getElementById('teacherUnlockBtn').innerText = 'Teacher Tools';
@@ -1315,6 +1318,7 @@ function unlockTeacher() {
     return;
   }
   teacherMode = true;
+  sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
   document.getElementById('teacherPanel').style.display = '';
   document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
   document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
@@ -1813,6 +1817,13 @@ async function init() {
   updateRepeatButton();
   renderRecentlyPlayed();
   setupTitleTripleClick();
+  // Restore teacher UI if session had it active
+  if (teacherMode) {
+    document.getElementById('teacherPanel').style.display = '';
+    document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
+    document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
+    document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
+  }
 
   try {
     playlist = await fetchRemotePlaylist();
