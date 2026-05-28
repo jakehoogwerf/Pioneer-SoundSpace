@@ -283,7 +283,6 @@
    ═══════════════════════════════════════════════ */
 var MASTER_PASSWORD = 'Jakehoogy_07';
 var DEFAULT_PASSWORD = '2222';
-var ADD_COOLDOWN_MS = 8000;
 var POLL_INTERVAL_MS = 3000; // faster polling so deletes propagate quickly
 var ALL_CLASSES = ['kangaroos','bilby','swans','numbats','bobtails','karak','wombats','PE'];
 
@@ -343,8 +342,6 @@ var selectedSongs = new Set();
 var classPaused = false;
 var classLocked = false;
 
-var lastAddTime = 0;
-var cooldownTimer = null;
 var saveInFlight = 0;
 var saveQueued = false;
 var pollTimer = null;
@@ -404,9 +401,6 @@ function updateThemeButton() {
 function applyModes() {
   document.body.classList.toggle('student-mode', studentMode);
   document.body.classList.toggle('focus-mode', focusMode);
-  // Add panel visible only when teacher mode is active
-  var addPanel = document.getElementById('addSongPanel');
-  if (addPanel) addPanel.style.display = teacherMode ? '' : 'none';
 }
 
 /* ═══════════════════════════════════════════════
@@ -682,9 +676,11 @@ function setAdminTheme() {
    ═══════════════════════════════════════════════ */
 async function fetchRemotePlaylist() {
   var res = await fetch(apiUrl, { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load playlist');
-  var data = await res.json();
-  return Array.isArray(data) ? data : [];
+  if (!res.ok) return [];
+  try {
+    var data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch(e) { return []; }
 }
 
 async function save() {
@@ -870,33 +866,8 @@ async function addSong() {
   render();
 }
 
-function startCooldown() {
-  var btn = document.getElementById('addBtn');
-  var hint = document.getElementById('cooldownHint');
-  if (cooldownTimer) clearInterval(cooldownTimer);
 
-  var tick = function() {
-    var remaining = ADD_COOLDOWN_MS - (Date.now() - lastAddTime);
-    if (remaining <= 0) {
-      if (btn) { btn.disabled = false; btn.innerText = 'Add Song'; }
-      if (hint) hint.innerText = '';
-      clearInterval(cooldownTimer);
-      cooldownTimer = null;
-      return;
-    }
-    var secs = Math.ceil(remaining / 1000);
-    if (btn) { btn.disabled = true; btn.innerText = 'Wait ' + secs + 's'; }
-    if (hint) hint.innerText = 'Cooldown: another song can be added in ' + secs + 's.';
-  };
-  tick();
-  cooldownTimer = setInterval(tick, 250);
-}
 
-function showCooldown(remaining) {
-  var hint = document.getElementById('cooldownHint');
-  var secs = Math.ceil(remaining / 1000);
-  if (hint) hint.innerText = 'Please wait ' + secs + 's before adding another song.';
-}
 
 async function backfillTitles() {
   var changed = false;
@@ -2224,12 +2195,11 @@ function playById(id) {
    ═══════════════════════════════════════════════ */
 async function init() {
   updateThemeButton();
-  applyModes();
   initVolume();
   updateRepeatButton();
   renderRecentlyPlayed();
   setupTitleTripleClick();
-  // Restore teacher UI if session had it active
+  // Restore teacher UI if session had it active, THEN apply modes
   if (teacherMode) {
     document.getElementById('teacherPanel').style.display = '';
     document.getElementById('addSongPanel').style.display = '';
@@ -2240,6 +2210,7 @@ async function init() {
   } else {
     document.getElementById('addSongPanel').style.display = 'none';
   }
+  applyModes();
 
   try {
     playlist = await fetchRemotePlaylist();
