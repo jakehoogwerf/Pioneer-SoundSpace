@@ -6,32 +6,29 @@ const ALLOWED_CLASSES = new Set([
   'bobtails', 'karak', 'wombats', 'PE',
 ])
 
-type PauseState = { paused: boolean; locked: boolean }
-
 export default async (req: Request, context: Context) => {
   const className = context.params.class
   if (!className || !ALLOWED_CLASSES.has(className)) {
     return new Response('Invalid class', { status: 400 })
   }
 
-  const store = getStore({ name: 'class-pause', consistency: 'strong' })
+  const store = getStore('class-pause')
 
   if (req.method === 'GET') {
     const data = await store.get(className, { type: 'json' })
-    const state = (data && typeof data === 'object') ? data as PauseState : { paused: false, locked: false }
+    const state = data && typeof data === 'object' ? data as { paused: boolean; locked: boolean } : { paused: false, locked: false }
     return Response.json({ paused: !!state.paused, locked: !!state.locked })
   }
 
   if (req.method === 'PUT' || req.method === 'POST') {
     let body: unknown
-    try { body = await req.json() } catch {
+    try {
+      body = await req.json()
+    } catch {
       return new Response('Invalid JSON', { status: 400 })
     }
     const b = body as Record<string, unknown>
-    const state: PauseState = {
-      paused: !!b.paused,
-      locked: !!b.locked,
-    }
+    const state = { paused: !!b.paused, locked: !!b.locked }
     await store.setJSON(className, state)
     return Response.json(state)
   }
