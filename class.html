@@ -1820,11 +1820,6 @@ function renderAnalytics(results) {
   container.innerHTML = html;
 }
 
-function escapeHtml(str) {
-  var d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
-}
 
 function toggleAnalyticsClass(header) {
   var body = header.nextElementSibling;
