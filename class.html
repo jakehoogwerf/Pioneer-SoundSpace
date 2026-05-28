@@ -72,6 +72,7 @@
       </div>
     </div>
     <div id="requestQueue" class="request-queue-list"></div>
+    <div id="requestDebug" style="margin-top:8px;font-size:11px;color:var(--text-subtle);font-family:monospace;"></div>
   </div>
 
   <!-- Listening History -->
@@ -1171,8 +1172,14 @@ async function submitRequest() {
     var existing = await fetchRequests();
     if (existing.some(function(r){ return !r.done && r.text.toLowerCase() === text.toLowerCase(); })) { showReqFeedback('Already requested!', 'info'); input.disabled=false; return; }
     existing.push({ id: Date.now(), text: text, ts: new Date().toISOString(), done: false });
-    await fetch(reqApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(existing) });
-    showReqFeedback('Request sent! Your teacher will see it.', 'success');
+    var putRes = await fetch(reqApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(existing) });
+    if (putRes.ok) {
+      showReqFeedback('Request sent! Your teacher will see it.', 'success');
+    } else {
+      var errText = await putRes.text().catch(function(){ return ''; });
+      showReqFeedback('Server error ' + putRes.status + ': ' + errText, 'error');
+      console.error('Request PUT failed:', putRes.status, errText);
+    }
     if (teacherMode) renderRequestQueue();
     updateRequestBadge();
   } catch(e) { showReqFeedback('Could not send request - check connection.', 'error'); }
@@ -1188,16 +1195,39 @@ function showReqFeedback(msg, type) {
 }
 
 async function fetchRequests() {
-  try { var res = await fetch(reqApiUrl, { cache:'no-store' }); if (!res.ok) return []; var data=await res.json(); return Array.isArray(data)?data:[]; } catch(e){ return []; }
+  try {
+    var res = await fetch(reqApiUrl, { cache:'no-store' });
+    if (!res.ok) { console.warn('fetchRequests failed:', res.status, reqApiUrl); return []; }
+    var data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch(e) { console.error('fetchRequests error:', e); return []; }
 }
 
 async function renderRequestQueue() {
   var panel = document.getElementById('requestQueuePanel');
   var list  = document.getElementById('requestQueue');
+  var debug = document.getElementById('requestDebug');
   if (!panel || !list || !teacherMode) { if(panel) panel.style.display='none'; return; }
-  var reqs  = await fetchRequests();
-  var pending = reqs.filter(function(r){ return !r.done; });
   panel.style.display = '';
+
+  // Show what the API actually returns
+  var raw = '?';
+  var reqs = [];
+  try {
+    var res = await fetch(reqApiUrl, { cache:'no-store' });
+    raw = 'HTTP ' + res.status;
+    if (res.ok) {
+      var data = await res.json();
+      raw += ' | ' + JSON.stringify(data).slice(0, 120);
+      reqs = Array.isArray(data) ? data : [];
+    } else {
+      raw += ' | ' + await res.text().catch(function(){ return ''; });
+    }
+  } catch(e) { raw = 'FETCH ERROR: ' + e.message; }
+
+  if (debug) debug.textContent = 'API: ' + reqApiUrl + ' => ' + raw;
+
+  var pending = reqs.filter(function(r){ return !r.done; });
   if (!pending.length) { list.innerHTML = '<div class="request-empty">No pending requests.</div>'; return; }
   list.innerHTML = pending.map(function(r) {
     var time = (function(){ try{ var d=new Date(r.ts); return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } })();
