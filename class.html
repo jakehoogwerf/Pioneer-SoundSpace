@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>PVS SoundSpace · Class Player</title>
+  <title>PVS SoundSpace &middot; Class Player</title>
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script>
@@ -28,45 +28,45 @@
     </div>
   </div>
   <div class="header-right">
-    <button class="btn btn-ghost theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
+    <button class="btn btn-ghost theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">&#127769;</button>
     <a class="btn btn-ghost" href="index.html">All Classes</a>
   </div>
 </header>
 <div class="accent-bar"></div>
 
 <main class="main">
-  <a href="index.html" class="back-link">← Back to classes</a>
+  <a href="index.html" class="back-link">&#8592; Back to classes</a>
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
     <h2 class="page-title" id="classTitle">Class</h2>
-    <button class="admin-trigger" id="adminTrigger" onclick="openAdmin()" aria-label="Settings" title="Settings">⚙</button>
+    <button class="admin-trigger" id="adminTrigger" onclick="openAdmin()" aria-label="Settings" title="Settings">&#9881;</button>
   </div>
-  <p class="page-subtitle">Teacher-curated playlist — sit back and enjoy the music.</p>
+  <p class="page-subtitle">Teacher-curated playlist &mdash; sit back and enjoy the music.</p>
 
-  <!-- Add Song Panel -->
-  <div class="panel" id="addSongPanel">
+  <!-- Add Song Panel (teacher only) -->
+  <div class="panel" id="addSongPanel" style="display:none;">
     <h3>Add to Playlist</h3>
     <div class="controls">
-      <input id="linkInput" placeholder="Paste a YouTube link…" inputmode="url">
+      <input id="linkInput" placeholder="Paste a YouTube link..." inputmode="url">
       <button class="btn btn-gold btn-lg" id="addBtn" onclick="addSong()">Add Song</button>
     </div>
-
+    <div id="addFeedback" style="margin-top:8px;font-size:13px;font-weight:600;min-height:18px;"></div>
   </div>
 
   <!-- Song Request Panel (student-facing) -->
   <div class="panel" id="requestPanel">
-    <h3>🎵 Request a Song</h3>
+    <h3>&#127925; Request a Song</h3>
     <p class="request-hint">Suggest a song for your teacher to add to the playlist.</p>
     <div class="controls">
-      <input id="requestInput" placeholder="Song name and artist…" maxlength="120">
+      <input id="requestInput" placeholder="Song name and artist..." maxlength="120">
       <button class="btn btn-gold btn-lg" onclick="submitRequest()">Request</button>
     </div>
     <div id="requestFeedback" class="request-feedback" aria-live="polite"></div>
   </div>
 
-  <!-- Request Queue (teacher-facing, inside teacher panel area) -->
+  <!-- Request Queue (teacher-facing) -->
   <div class="panel" id="requestQueuePanel" style="display:none;">
     <div class="panel-head">
-      <h3>📥 Song Requests</h3>
+      <h3>&#128229; Song Requests</h3>
       <div class="panel-head-actions">
         <button class="btn btn-sm btn-outline" onclick="clearAllRequests()">Clear All</button>
       </div>
@@ -74,21 +74,21 @@
     <div id="requestQueue" class="request-queue-list"></div>
   </div>
 
-  <!-- Recently Played -->
+  <!-- Listening History -->
   <div class="panel" id="recentPanel" style="display:none;">
     <h3>Listening History</h3>
     <div id="recentlyPlayed" class="recent-list"></div>
   </div>
 
-  <!-- Most Played Panel -->
+  <!-- Most Played -->
   <div class="panel" id="mostPlayedPanel" style="display:none;">
     <div class="panel-head">
-      <h3>🏆 Most Played</h3>
+      <h3>&#127942; Most Played</h3>
     </div>
     <div id="mostPlayedList" class="most-played-list"></div>
   </div>
 
-  <!-- Playlist Panel -->
+  <!-- Playlist -->
   <div class="panel">
     <div class="panel-head">
       <h3>Playlist</h3>
@@ -108,10 +108,10 @@
         </div>
         <div class="teacher-btn-group">
           <button class="btn btn-danger btn-sm" id="pauseAllBtn" onclick="togglePauseAll()">Pause All</button>
-          <button class="btn btn-outline btn-sm" id="lockAllBtn" onclick="toggleLockAll()">🔒 Lock Playback</button>
+          <button class="btn btn-outline btn-sm" id="lockAllBtn" onclick="toggleLockAll()">&#128274; Lock Playback</button>
         </div>
         <div class="teacher-btn-group teacher-schedule-group" id="scheduleGroup">
-          <label style="font-size:12px;font-weight:600;color:var(--text-muted);align-self:center;">⏰ Schedule:</label>
+          <label style="font-size:12px;font-weight:600;color:var(--text-muted);align-self:center;">&#9200; Schedule:</label>
           <input type="time" id="scheduleStart" class="schedule-time-input" title="Auto-play at this time">
           <span style="font-size:12px;color:var(--text-muted);align-self:center;">to</span>
           <input type="time" id="scheduleEnd" class="schedule-time-input" title="Auto-pause at this time">
@@ -129,7 +129,7 @@
   <div id="player"></div>
 </div>
 
-<!-- Bottom Player Bar -->
+<!-- Player Bar -->
 <div id="playerBar" class="player-bar" role="region" aria-label="Now playing">
   <div class="player-bar-info">
     <div class="player-bar-thumb" id="playerBarThumb" aria-hidden="true"></div>
@@ -146,13 +146,13 @@
   <div class="player-bar-controls">
     <span class="player-bar-time" id="timeDisplay" aria-live="off">0:00 / 0:00</span>
     <div class="player-bar-volume" id="volumeWrap">
-      <button class="player-bar-btn" id="volumeBtn" onclick="toggleMute()" aria-label="Volume" style="width:36px;height:36px;font-size:15px;">🔊</button>
+      <button class="player-bar-btn" id="volumeBtn" onclick="toggleMute()" aria-label="Volume" style="width:36px;height:36px;font-size:15px;">&#128266;</button>
       <input type="range" id="volumeSlider" min="0" max="100" value="100" class="volume-slider" oninput="setVolume(this.value)">
     </div>
-    <button class="player-bar-btn" id="prevBtn" onclick="prev()" aria-label="Previous">⏮</button>
-    <button class="player-bar-btn player-bar-btn-primary" id="playBtn" onclick="togglePlay()" aria-label="Play/Pause">▶</button>
-    <button class="player-bar-btn" id="nextBtn" onclick="next()" aria-label="Next">⏭</button>
-    <button class="player-bar-btn" id="repeatBtn" onclick="cycleRepeat()" aria-label="Repeat">🔁</button>
+    <button class="player-bar-btn" id="prevBtn" onclick="prev()" aria-label="Previous">&#9198;</button>
+    <button class="player-bar-btn player-bar-btn-primary" id="playBtn" onclick="togglePlay()" aria-label="Play/Pause">&#9654;</button>
+    <button class="player-bar-btn" id="nextBtn" onclick="next()" aria-label="Next">&#9197;</button>
+    <button class="player-bar-btn" id="repeatBtn" onclick="cycleRepeat()" aria-label="Repeat">&#128257;</button>
   </div>
   <div class="player-bar-progress" id="progressBar" aria-label="Seek" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
     <div class="player-bar-progress-fill" id="progressFill"></div>
@@ -162,8 +162,8 @@
 
 <!-- Offline Banner -->
 <div id="offlineBanner" class="offline-banner" style="display:none;" aria-live="polite">
-  <span class="offline-icon">📡</span>
-  <span id="offlineBannerText">No internet connection — music will keep playing</span>
+  <span class="offline-icon">&#128225;</span>
+  <span id="offlineBannerText">No internet connection - music will keep playing</span>
 </div>
 
 <!-- Pause Overlay -->
@@ -172,7 +172,7 @@
     <div class="pause-overlay-icon" id="pauseOverlayIcon">||</div>
     <h3 id="pauseOverlayTitle">Playback Paused</h3>
     <p id="pauseOverlayText">Your teacher has paused playback for this class.</p>
-    <button class="btn btn-outline btn-sm" id="pauseTeacherBtn" onclick="unlockFromOverlay()" style="margin-top:18px;opacity:.6;font-size:11px;">I&rsquo;m the teacher</button>
+    <button class="btn btn-outline btn-sm" onclick="unlockFromOverlay()" style="margin-top:18px;opacity:.6;font-size:11px;">I'm the teacher</button>
   </div>
 </div>
 
@@ -182,14 +182,13 @@
   <div class="admin-modal">
     <div class="admin-modal-header">
       <h2>Admin Settings</h2>
-      <button class="admin-close" onclick="closeAdmin()">✕</button>
+      <button class="admin-close" onclick="closeAdmin()">&#10005;</button>
     </div>
     <div class="admin-modal-body">
-      <!-- Password Management -->
       <div class="admin-section">
-        <h3>🔑 Password Management</h3>
+        <h3>&#128273; Password</h3>
         <div class="admin-field">
-          <label>Student / Teacher Password</label>
+          <label>Teacher Password</label>
           <div class="admin-input-group">
             <input type="password" id="adminPwdInput">
             <button class="btn btn-sm btn-outline" id="adminPwdToggle" onclick="toggleAdminPwdVis()">Show</button>
@@ -200,25 +199,19 @@
           <button class="btn btn-sm btn-outline" onclick="resetPassword()">Reset to Default</button>
         </div>
       </div>
-
-      <!-- Playlist Controls -->
       <div class="admin-section">
-        <h3>🎵 Playlist Controls</h3>
+        <h3>&#127925; Playlist Controls</h3>
         <div class="admin-actions">
           <button class="btn btn-sm btn-danger" onclick="adminClearCurrent()">Clear Current Playlist</button>
           <button class="btn btn-sm btn-danger" onclick="adminClearAll()">Clear All Playlists</button>
           <button class="btn btn-sm btn-outline" onclick="adminRemoveDupes()">Remove Duplicates</button>
         </div>
       </div>
-
-      <!-- Classroom Controls -->
       <div class="admin-section">
-        <h3>👩‍🏫 Classroom Controls</h3>
+        <h3>&#128105;&#8205;&#127979; Classroom Controls</h3>
         <div class="admin-toggle">
           <div class="toggle-row">
-            <div class="toggle-info">
-              <span>Teacher Mode</span>
-            </div>
+            <div class="toggle-info"><span>Teacher Mode</span></div>
             <label class="toggle-switch">
               <input type="checkbox" id="adminTeacherToggle" onchange="toggleAdminTeacher()">
               <span class="toggle-slider"></span>
@@ -228,8 +221,8 @@
         <div class="admin-toggle">
           <div class="toggle-row">
             <div class="toggle-info">
-              <span>Student View (Default)</span>
-              <small>Playback only — students cannot add or delete songs</small>
+              <span>Student View</span>
+              <small>Playback only - students cannot add songs</small>
             </div>
             <label class="toggle-switch">
               <input type="checkbox" id="adminStudentToggle" onchange="toggleAdminStudent()">
@@ -239,10 +232,7 @@
         </div>
         <div class="admin-toggle">
           <div class="toggle-row">
-            <div class="toggle-info">
-              <span>Focus Mode</span>
-              <small>Minimal classroom view</small>
-            </div>
+            <div class="toggle-info"><span>Focus Mode</span><small>Minimal view</small></div>
             <label class="toggle-switch">
               <input type="checkbox" id="adminFocusToggle" onchange="toggleAdminFocus()">
               <span class="toggle-slider"></span>
@@ -250,27 +240,20 @@
           </div>
         </div>
       </div>
-
-      <!-- Appearance -->
       <div class="admin-section">
-        <h3>🎨 Appearance</h3>
+        <h3>&#127912; Appearance</h3>
         <div class="admin-field">
           <label>Theme</label>
           <select id="adminThemeSelect" onchange="setAdminTheme()">
-            <option value="auto">Auto (Remember Choice)</option>
-            <option value="light">Force Light Mode</option>
-            <option value="dark">Force Dark Mode</option>
+            <option value="auto">Auto</option>
+            <option value="light">Force Light</option>
+            <option value="dark">Force Dark</option>
           </select>
         </div>
       </div>
-
-      <!-- Song Analytics -->
       <div class="admin-section">
-        <h3>📊 Song Play Analytics</h3>
-        <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px;">Real-time play counts for each class. Data refreshes every 10 seconds.</p>
-        <div id="analyticsContent">
-          <p style="color:var(--text-muted);font-size:13px;">Loading analytics...</p>
-        </div>
+        <h3>&#128202; Analytics</h3>
+        <div id="analyticsContent"><p style="color:var(--text-muted);font-size:13px;">Loading...</p></div>
       </div>
     </div>
   </div>
@@ -278,98 +261,114 @@
 
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
-/* ═══════════════════════════════════════════════
-   Configuration & Constants
-   ═══════════════════════════════════════════════ */
+/* =====================================================
+   PVS SoundSpace - class.html JavaScript
+   Clean rewrite - no patches, no accumulated debt
+   ===================================================== */
+
+// ── Config ──────────────────────────────────────────
 var MASTER_PASSWORD = 'Jakehoogy_07';
 var DEFAULT_PASSWORD = '2222';
-var POLL_INTERVAL_MS = 3000; // faster polling so deletes propagate quickly
+var POLL_MS = 4000;
 var ALL_CLASSES = ['kangaroos','bilby','swans','numbats','bobtails','karak','wombats','PE'];
 
-/* ═══════════════════════════════════════════════
-   URL Parameters & API
-   ═══════════════════════════════════════════════ */
-var params = new URLSearchParams(window.location.search);
+// ── URL / API ────────────────────────────────────────
+var params     = new URLSearchParams(window.location.search);
 var classParam = params.get('class') || 'default';
-var className = classParam;
-var apiUrl = '/api/playlist/' + encodeURIComponent(classParam);
-var pauseApiUrl = '/api/pause/' + encodeURIComponent(classParam);
+var apiUrl     = '/api/playlist/' + encodeURIComponent(classParam);
+var pauseApiUrl= '/api/pause/'    + encodeURIComponent(classParam);
+var banApiUrl  = '/api/banned/'   + encodeURIComponent(classParam);
+var reqApiUrl  = '/api/requests/' + encodeURIComponent(classParam);
 
-/* Class colour themes */
+// ── Class colour themes ──────────────────────────────
 var CLASS_COLOURS = {
-  kangaroos: { h: '28',  s: '85%', accent: '#D4791A', lt: '#F0A040' },
-  bilby:     { h: '258', s: '65%', accent: '#7B5CD4', lt: '#A485F0' },
-  swans:     { h: '198', s: '80%', accent: '#1A9EC8', lt: '#3DC0E8' },
-  numbats:   { h: '340', s: '75%', accent: '#C8204A', lt: '#E84A72' },
-  bobtails:  { h: '162', s: '70%', accent: '#1AB87A', lt: '#3AD4A0' },
-  karak:     { h: '48',  s: '90%', accent: '#C89A10', lt: '#F0BC30' },
-  wombats:   { h: '14',  s: '80%', accent: '#C84820', lt: '#E87248' },
-  pe:        { h: '120', s: '55%', accent: '#3A9A3A', lt: '#5CBA5C' }
+  kangaroos: { accent: '#D4791A', lt: '#F0A040', h: '28',  s: '85%' },
+  bilby:     { accent: '#7B5CD4', lt: '#A485F0', h: '258', s: '65%' },
+  swans:     { accent: '#1A9EC8', lt: '#3DC0E8', h: '198', s: '80%' },
+  numbats:   { accent: '#C8204A', lt: '#E84A72', h: '340', s: '75%' },
+  bobtails:  { accent: '#1AB87A', lt: '#3AD4A0', h: '162', s: '70%' },
+  karak:     { accent: '#C89A10', lt: '#F0BC30', h: '48',  s: '90%' },
+  wombats:   { accent: '#C84820', lt: '#E87248', h: '14',  s: '80%' },
+  pe:        { accent: '#3A9A3A', lt: '#5CBA5C', h: '120', s: '55%' }
 };
-(function applyClassColour() {
-  var key = classParam.toLowerCase();
-  var col = CLASS_COLOURS[key];
+
+(function() {
+  var col = CLASS_COLOURS[classParam.toLowerCase()];
   if (!col) return;
-  var root = document.documentElement;
-  root.style.setProperty('--gold', col.accent);
-  root.style.setProperty('--gold-lt', col.lt);
-  root.style.setProperty('--gold-dim', 'hsla(' + col.h + ',' + col.s + ',.5,.18)');
-  root.style.setProperty('--accent', col.accent);
-  root.style.setProperty('--accent-lt', col.lt);
-  root.style.setProperty('--playing-border', col.accent);
-  root.style.setProperty('--playing-text', col.accent);
-  root.style.setProperty('--playing-glow', 'hsla(' + col.h + ',' + col.s + ',.5,.22)');
-  root.style.setProperty('--teacher-border', col.accent);
+  var r = document.documentElement;
+  r.style.setProperty('--gold',          col.accent);
+  r.style.setProperty('--gold-lt',       col.lt);
+  r.style.setProperty('--accent',        col.accent);
+  r.style.setProperty('--accent-lt',     col.lt);
+  r.style.setProperty('--gold-dim',      'hsla(' + col.h + ',' + col.s + ',.5,.18)');
+  r.style.setProperty('--playing-border',col.accent);
+  r.style.setProperty('--playing-text',  col.accent);
+  r.style.setProperty('--playing-glow',  'hsla(' + col.h + ',' + col.s + ',.5,.22)');
+  r.style.setProperty('--teacher-border',col.accent);
 })();
 
 document.getElementById('classTitle').innerText =
-  className === 'PE' ? 'PE Class' : className.charAt(0).toUpperCase() + className.slice(1);
+  classParam === 'PE' ? 'PE Class'
+  : classParam.charAt(0).toUpperCase() + classParam.slice(1);
 
-/* ═══════════════════════════════════════════════
-   State
-   ═══════════════════════════════════════════════ */
-var playlist = [];
-var shuffle = false;
-var currentIndex = -1;
-var ytPlayer = null;
-var ytReady = false;
-var pendingPlay = null;
-var isPlaying = false;
-var progressTimer = null;
+// ── State ────────────────────────────────────────────
+var playlist       = [];
+var currentIndex   = -1;
+var isPlaying      = false;
+var ytPlayer       = null;
+var ytReady        = false;
+var pendingPlay    = null;
+var progressTimer  = null;
+var isSeeking      = false;
+var shuffle        = false;
+var repeatMode     = localStorage.getItem('pvs_repeat_mode') || 'none';
+var currentVolume  = parseInt(localStorage.getItem('pvs_volume') || '80', 10);
+var isMuted        = false;
 
-var teacherMode = sessionStorage.getItem('pvs_teacher_' + (new URLSearchParams(window.location.search).get('class') || 'default')) === 'true';
-var selectedSongs = new Set();
-var classPaused = false;
-var classLocked = false;
+var teacherMode    = sessionStorage.getItem('pvs_teacher_' + classParam) === 'true';
+var studentMode    = localStorage.getItem('pvs_student_mode') !== 'false';
+var focusMode      = localStorage.getItem('pvs_focus_mode') === 'true';
+var classPaused    = false;
+var classLocked    = false;
+var selectedSongs  = new Set();
 
-var saveInFlight = 0;
-var saveQueued = false;
-var pollTimer = null;
-var recentlyDeletedIds = new Set(); // songs deleted locally — ignore if server sends them back
+var pollTimer      = null;
+var lastSnap       = '[]';
+var deletedIds     = new Set();
+var bannedIds      = new Set();
 
-var studentMode = localStorage.getItem('pvs_student_mode') !== 'false'; // default ON — teacher unlocks
-var focusMode = localStorage.getItem('pvs_focus_mode') === 'true';
-var currentVolume = parseInt(localStorage.getItem('pvs_volume') || '100', 10);
-var isMuted = false;
-var repeatMode = localStorage.getItem('pvs_repeat_mode') || 'none';
+// ── Helpers ──────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
 
-/* ═══════════════════════════════════════════════
-   Password Management
-   ═══════════════════════════════════════════════ */
+function thumbUrl(id) {
+  return 'https://img.youtube.com/vi/' + id + '/mqdefault.jpg';
+}
+
+function extractYTId(url) {
+  var m = String(url).trim().match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/
+  );
+  return m ? m[1] : null;
+}
+
+function formatTime(s) {
+  if (!isFinite(s) || s < 0) s = 0;
+  var m = Math.floor(s / 60);
+  var sec = Math.floor(s % 60);
+  return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
 function getPassword() {
-  return localStorage.getItem('pvs_admin_password') || DEFAULT_PASSWORD;
+  return localStorage.getItem('pvs_teacher_password') || DEFAULT_PASSWORD;
 }
 
-function setPassword(pwd) {
-  localStorage.setItem('pvs_admin_password', pwd);
-}
-
-/* ═══════════════════════════════════════════════
-   Theme System
-   ═══════════════════════════════════════════════ */
-function getTheme() {
-  return document.documentElement.getAttribute('data-theme') || 'light';
-}
+// ── Theme ────────────────────────────────────────────
+function getTheme() { return document.documentElement.getAttribute('data-theme') || 'light'; }
 
 function toggleTheme() {
   document.body.classList.add('theme-transition');
@@ -378,53 +377,61 @@ function toggleTheme() {
   localStorage.setItem('pvs_theme', next);
   var forced = localStorage.getItem('pvs_force_theme');
   if (forced && forced !== 'auto') localStorage.setItem('pvs_force_theme', next);
-  updateThemeButton();
-  setTimeout(function(){ document.body.classList.remove('theme-transition'); }, 350);
+  document.getElementById('themeToggle').textContent = next === 'dark' ? '\u2600\ufe0f' : '\ud83c\udf19';
+  setTimeout(function() { document.body.classList.remove('theme-transition'); }, 350);
 }
 
-function applyTheme(theme) {
+function applyTheme(t) {
   document.body.classList.add('theme-transition');
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('pvs_theme', theme);
-  updateThemeButton();
-  setTimeout(function(){ document.body.classList.remove('theme-transition'); }, 350);
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('pvs_theme', t);
+  document.getElementById('themeToggle').textContent = t === 'dark' ? '\u2600\ufe0f' : '\ud83c\udf19';
+  setTimeout(function() { document.body.classList.remove('theme-transition'); }, 350);
 }
 
-function updateThemeButton() {
-  var btn = document.getElementById('themeToggle');
-  if (btn) btn.textContent = getTheme() === 'dark' ? '☀️' : '🌙';
+// ── Teacher UI (single source of truth) ─────────────
+function applyTeacherUI() {
+  var addP   = document.getElementById('addSongPanel');
+  var tchP   = document.getElementById('teacherPanel');
+  var unlBtn = document.getElementById('teacherUnlockBtn');
+  var reqP   = document.getElementById('requestQueuePanel');
+
+  if (teacherMode) {
+    if (addP)   addP.style.display   = '';
+    if (tchP)   tchP.style.display   = '';
+    if (unlBtn) { unlBtn.textContent = 'Lock Tools'; unlBtn.className = 'btn btn-gold btn-sm'; }
+    if (reqP)   renderRequestQueue();
+  } else {
+    if (addP)   addP.style.display   = 'none';
+    if (tchP)   tchP.style.display   = 'none';
+    if (unlBtn) { unlBtn.textContent = 'Teacher Tools'; unlBtn.className = 'btn btn-outline btn-sm'; }
+    if (reqP)   reqP.style.display   = 'none';
+    selectedSongs.clear();
+  }
 }
 
-/* ═══════════════════════════════════════════════
-   Student Mode / Focus Mode
-   ═══════════════════════════════════════════════ */
 function applyModes() {
   document.body.classList.toggle('student-mode', studentMode);
   document.body.classList.toggle('focus-mode', focusMode);
 }
 
-/* ═══════════════════════════════════════════════
-   Volume Control
-   ═══════════════════════════════════════════════ */
-function setVolume(val) {
-  val = parseInt(val, 10);
-  currentVolume = val;
-  isMuted = val === 0;
-  if (ytPlayer && ytPlayer.setVolume) {
-    try { ytPlayer.setVolume(val); } catch(e){}
-  }
-  localStorage.setItem('pvs_volume', val);
+// ── Volume ───────────────────────────────────────────
+function setVolume(v) {
+  v = parseInt(v, 10);
+  currentVolume = v;
+  isMuted = (v === 0);
+  if (ytPlayer && ytPlayer.setVolume) { try { ytPlayer.setVolume(v); } catch(e) {} }
+  localStorage.setItem('pvs_volume', v);
   updateVolumeIcon();
 }
 
 function toggleMute() {
   if (isMuted) {
-    var restored = parseInt(localStorage.getItem('pvs_volume_pre_mute') || '100', 10);
-    if (restored === 0) restored = 100;
-    setVolume(restored);
-    document.getElementById('volumeSlider').value = restored;
+    var prev = parseInt(localStorage.getItem('pvs_pre_mute') || '80', 10) || 80;
+    setVolume(prev);
+    document.getElementById('volumeSlider').value = prev;
   } else {
-    localStorage.setItem('pvs_volume_pre_mute', currentVolume);
+    localStorage.setItem('pvs_pre_mute', currentVolume);
     setVolume(0);
     document.getElementById('volumeSlider').value = 0;
   }
@@ -433,205 +440,867 @@ function toggleMute() {
 function updateVolumeIcon() {
   var btn = document.getElementById('volumeBtn');
   if (!btn) return;
-  if (currentVolume === 0 || isMuted) btn.textContent = '🔇';
-  else if (currentVolume < 50) btn.textContent = '🔉';
-  else btn.textContent = '🔊';
+  btn.textContent = currentVolume === 0 || isMuted ? '\ud83d\udd07' : currentVolume < 50 ? '\ud83d\udd09' : '\ud83d\udd0a';
 }
 
-function initVolume() {
-  var slider = document.getElementById('volumeSlider');
-  if (slider) slider.value = currentVolume;
-  updateVolumeIcon();
+// ── YouTube Player ───────────────────────────────────
+function onYouTubeIframeAPIReady() {
+  ytReady = true;
+  if (pendingPlay !== null) { var i = pendingPlay; pendingPlay = null; play(i); }
 }
 
-/* ═══════════════════════════════════════════════
-   Recently Played
-   ═══════════════════════════════════════════════ */
-function getRecentlyPlayed() {
-  try { return JSON.parse(localStorage.getItem('pvs_recently_played') || '[]'); }
-  catch(e){ return []; }
-}
+function play(index) {
+  if ((classPaused || classLocked) && !teacherMode) return;
+  if (!playlist.length || index < 0 || index >= playlist.length) return;
+  currentIndex = index;
 
-function addToRecentlyPlayed(song) {
-  var recent = getRecentlyPlayed();
-  recent = recent.filter(function(s){ return s.id !== song.id; });
-  recent.unshift({ id: song.id, title: song.title });
-  if (recent.length > 5) recent = recent.slice(0, 5);
-  localStorage.setItem('pvs_recently_played', JSON.stringify(recent));
-  renderRecentlyPlayed();
-}
+  if (!ytReady) { pendingPlay = index; return; }
 
-function renderRecentlyPlayed() {
-  var recent = getRecentlyPlayed();
-  var panel = document.getElementById('recentPanel');
-  var container = document.getElementById('recentlyPlayed');
-  if (!panel || !container) return;
-
-  if (recent.length === 0) {
-    panel.style.display = 'none';
-    return;
-  }
-  panel.style.display = '';
-  container.innerHTML = '';
-  recent.forEach(function(song) {
-    var item = document.createElement('div');
-    item.className = 'recent-item';
-    item.innerHTML =
-      '<div class="recent-item-thumb"><img src="https://img.youtube.com/vi/' + escapeHtml(song.id) + '/mqdefault.jpg" alt="" loading="lazy"></div>' +
-      '<div class="recent-item-title">' + escapeHtml(song.title) + '</div>';
-    item.addEventListener('click', function() {
-      var idx = playlist.findIndex(function(s){ return s.id === song.id; });
-      if (idx >= 0) play(idx);
-      else {
-        playlist.push({ id: song.id, title: song.title });
-        save();
-        render();
-        play(playlist.length - 1);
+  if (!ytPlayer) {
+    ytPlayer = new YT.Player('player', {
+      width: '1', height: '1',
+      videoId: playlist[index].id,
+      playerVars: { autoplay: 1, playsinline: 1, rel: 0 },
+      events: {
+        onReady: function(e) { e.target.setVolume(currentVolume); e.target.playVideo(); },
+        onStateChange: onPlayerStateChange
       }
     });
-    container.appendChild(item);
-  });
+  } else {
+    ytPlayer.loadVideoById(playlist[index].id);
+    try { ytPlayer.setVolume(currentVolume); } catch(e) {}
+  }
+
+  isPlaying = true;
+  addToRecent(playlist[index]);
+  trackPlay(playlist[index]);
+  render();
+  updateNowPlaying();
+  updatePlayBtn();
+  setProgress(0);
+  setTimeDisplay(0, 0);
+  startProgressTimer();
 }
 
-/* ═══════════════════════════════════════════════
-   Admin Panel
-   ═══════════════════════════════════════════════ */
-var titleClickCount = 0;
-var titleClickTimer = null;
-
-function setupTitleTripleClick() {
-  var title = document.getElementById('classTitle');
-  if (!title) return;
-  title.addEventListener('click', function() {
-    titleClickCount++;
-    if (titleClickTimer) clearTimeout(titleClickTimer);
-    if (titleClickCount >= 3) {
-      titleClickCount = 0;
-      openAdmin();
+function onPlayerStateChange(e) {
+  if (e.data === YT.PlayerState.ENDED) {
+    repeatMode === 'one' ? play(currentIndex) : next();
+    return;
+  }
+  if (e.data === YT.PlayerState.PLAYING) {
+    if ((classPaused || classLocked) && !teacherMode) {
+      try { ytPlayer.pauseVideo(); } catch(err) {}
+      return;
     }
-    titleClickTimer = setTimeout(function(){ titleClickCount = 0; }, 600);
+    isPlaying = true;
+    startProgressTimer();
+  } else if (e.data === YT.PlayerState.PAUSED) {
+    isPlaying = false;
+    stopProgressTimer();
+  }
+  updatePlayBtn();
+}
+
+function togglePlay() {
+  if ((classPaused || classLocked) && !teacherMode) return;
+  if (currentIndex < 0) { if (playlist.length) play(0); return; }
+  if (!ytPlayer) return;
+  try { isPlaying ? ytPlayer.pauseVideo() : ytPlayer.playVideo(); } catch(e) {}
+}
+
+function next() {
+  if (!playlist.length) return;
+  var ni;
+  if (shuffle && playlist.length > 1) {
+    do { ni = Math.floor(Math.random() * playlist.length); } while (ni === currentIndex);
+  } else {
+    ni = currentIndex + 1;
+    if (ni >= playlist.length) {
+      if (repeatMode === 'none') { isPlaying = false; updatePlayBtn(); stopProgressTimer(); return; }
+      ni = 0;
+    }
+  }
+  play(ni);
+}
+
+function prev() {
+  if (!playlist.length) return;
+  play(currentIndex <= 0 ? playlist.length - 1 : currentIndex - 1);
+}
+
+function toggleShuffle() {
+  shuffle = !shuffle;
+  var btn = document.getElementById('shuffleBtn');
+  if (btn) { btn.textContent = 'Shuffle: ' + (shuffle ? 'On' : 'Off'); btn.className = 'btn btn-sm ' + (shuffle ? 'btn-gold' : 'btn-outline'); }
+}
+
+function cycleRepeat() {
+  repeatMode = repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none';
+  localStorage.setItem('pvs_repeat_mode', repeatMode);
+  updateRepeatBtn();
+}
+
+function updateRepeatBtn() {
+  var btn = document.getElementById('repeatBtn');
+  if (!btn) return;
+  btn.textContent = repeatMode === 'one' ? '\ud83d\udd02' : '\ud83d\udd01';
+  btn.classList.toggle('repeat-active', repeatMode !== 'none');
+  btn.setAttribute('aria-label', 'Repeat: ' + repeatMode);
+}
+
+// ── Progress Bar ─────────────────────────────────────
+function setProgress(ratio) {
+  if (isSeeking) return;
+  var fill  = document.getElementById('progressFill');
+  var thumb = document.getElementById('progressThumb');
+  var pct = Math.max(0, Math.min(1, ratio)) * 100;
+  if (fill)  fill.style.width = pct + '%';
+  if (thumb) thumb.style.left = pct + '%';
+}
+
+function setTimeDisplay(cur, dur) {
+  var el = document.getElementById('timeDisplay');
+  if (el) el.textContent = formatTime(cur) + ' / ' + formatTime(dur);
+}
+
+function startProgressTimer() {
+  stopProgressTimer();
+  progressTimer = setInterval(function() {
+    if (!ytPlayer || !ytPlayer.getDuration) return;
+    try {
+      var d = ytPlayer.getDuration();
+      var t = ytPlayer.getCurrentTime();
+      if (d > 0) setProgress(t / d);
+      setTimeDisplay(t, d);
+    } catch(e) {}
+  }, 500);
+}
+
+function stopProgressTimer() {
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+}
+
+(function initSeek() {
+  var bar = document.getElementById('progressBar');
+  if (!bar) return;
+  function seekTo(e) {
+    var rect = bar.getBoundingClientRect();
+    var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    var ratio = Math.max(0, Math.min(1, x / rect.width));
+    var fill  = document.getElementById('progressFill');
+    var thumb = document.getElementById('progressThumb');
+    if (fill)  fill.style.width = (ratio*100) + '%';
+    if (thumb) thumb.style.left = (ratio*100) + '%';
+    if (ytPlayer && ytPlayer.getDuration) {
+      var d = ytPlayer.getDuration();
+      if (d > 0) setTimeDisplay(ratio * d, d);
+    }
+    return ratio;
+  }
+  function onDown(e) {
+    if (!ytPlayer || !ytPlayer.getDuration) return;
+    e.preventDefault(); isSeeking = true; bar.classList.add('is-seeking'); seekTo(e);
+    var mv = e.type === 'mousedown' ? 'mousemove' : 'touchmove';
+    var up = e.type === 'mousedown' ? 'mouseup'   : 'touchend';
+    document.addEventListener(mv, onMove);
+    document.addEventListener(up, onUp);
+  }
+  function onMove(e) { e.preventDefault(); seekTo(e); }
+  function onUp(e) {
+    var ratio = seekTo(e.changedTouches ? {clientX: e.changedTouches[0].clientX} : e);
+    isSeeking = false; bar.classList.remove('is-seeking');
+    document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp);
+    if (ytPlayer && ytPlayer.getDuration) {
+      var d = ytPlayer.getDuration();
+      if (d > 0) ytPlayer.seekTo(ratio * d, true);
+    }
+  }
+  bar.addEventListener('mousedown', onDown);
+  bar.addEventListener('touchstart', onDown, { passive: false });
+})();
+
+// ── Now Playing UI ───────────────────────────────────
+function updateNowPlaying() {
+  var el    = document.getElementById('nowPlaying');
+  var thumb = document.getElementById('playerBarThumb');
+  var eq    = document.getElementById('playerBarEq');
+  if (currentIndex >= 0 && playlist[currentIndex]) {
+    if (el) el.textContent = playlist[currentIndex].title || 'YouTube Video';
+    updateMarquee();
+    if (thumb) { thumb.style.backgroundImage = "url('" + thumbUrl(playlist[currentIndex].id) + "')"; thumb.classList.add('has-art'); }
+    if (eq) eq.classList.add('is-active');
+  } else {
+    if (el) el.textContent = 'Nothing playing';
+    if (thumb) { thumb.style.backgroundImage = ''; thumb.classList.remove('has-art'); }
+    if (eq) eq.classList.remove('is-active');
+    setTimeDisplay(0, 0);
+  }
+}
+
+function updatePlayBtn() {
+  var btn = document.getElementById('playBtn');
+  var eq  = document.getElementById('playerBarEq');
+  if (btn) { btn.textContent = isPlaying ? '\u23f8' : '\u25b6'; btn.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play'); }
+  if (eq) {
+    eq.classList.toggle('is-active', currentIndex >= 0);
+    eq.classList.toggle('eq-paused', currentIndex >= 0 && !isPlaying);
+  }
+}
+
+function updateMarquee() {
+  var wrap = document.getElementById('titleScrollWrap');
+  var el   = document.getElementById('nowPlaying');
+  if (!wrap || !el) return;
+  el.style.animation = 'none';
+  requestAnimationFrame(function() {
+    var overflow = el.scrollWidth - wrap.offsetWidth;
+    if (overflow > 4) {
+      wrap.style.setProperty('--marquee-offset', '-' + overflow + 'px');
+      el.style.animation = 'marquee-scroll ' + Math.max(4, overflow/40) + 's linear 1.5s infinite alternate';
+    } else {
+      wrap.style.removeProperty('--marquee-offset');
+    }
   });
 }
+
+// ── Render Playlist ──────────────────────────────────
+function render() {
+  var div = document.getElementById('playlist');
+  if (!div) return;
+  div.innerHTML = '';
+
+  if (!playlist.length) {
+    div.innerHTML = '<div class="empty-state">No songs yet. Your teacher has not added any songs to this playlist.</div>';
+    return;
+  }
+
+  playlist.forEach(function(song, i) {
+    var isActive = (i === currentIndex);
+    var row = document.createElement('div');
+    row.className = 'song-row' + (isActive ? ' is-playing' : '');
+    row.setAttribute('tabindex', '0');
+
+    var showRemove = teacherMode && !focusMode;
+
+    row.innerHTML =
+      '<div class="song-row-thumb">' +
+        '<img src="' + thumbUrl(song.id) + '" alt="" loading="lazy">' +
+        '<span class="song-row-indicator">' + (isActive ? '<span class="eq"><i></i><i></i><i></i></span>' : '&#9654;') + '</span>' +
+      '</div>' +
+      '<div class="song-row-info">' +
+        '<div class="song-row-title">' + esc(song.title || 'Loading...') + '</div>' +
+        (isActive ? '<div class="song-row-status">Now playing</div><div class="song-row-wave"><i></i><i></i><i></i><i></i></div>' : '') +
+      '</div>' +
+      (showRemove ? '<button class="song-row-remove" title="Remove">&#10005;</button>' : '');
+
+    // Click to play
+    row.addEventListener('click', function(e) {
+      if (e.target.closest('.song-row-remove') || e.target.closest('.song-row-checkbox')) return;
+      play(i);
+    });
+
+    // Remove button
+    var removeBtn = row.querySelector('.song-row-remove');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        deleteSong(i);
+      });
+    }
+
+    // Checkboxes for teacher
+    if (teacherMode) {
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'song-row-checkbox';
+      cb.checked = selectedSongs.has(i);
+      cb.addEventListener('click', function(ev) { ev.stopPropagation(); });
+      cb.addEventListener('change', function() { cb.checked ? selectedSongs.add(i) : selectedSongs.delete(i); });
+      row.insertBefore(cb, row.firstChild);
+      row.classList.add('has-checkbox');
+    }
+
+    div.appendChild(row);
+  });
+}
+
+// ── Add / Delete Songs ───────────────────────────────
+async function addSong() {
+  var input   = document.getElementById('linkInput');
+  var btn     = document.getElementById('addBtn');
+  var feedback= document.getElementById('addFeedback');
+
+  var raw = (input.value || '').trim();
+  if (!raw) { if (feedback) feedback.textContent = 'Please paste a YouTube link first.'; return; }
+
+  var id = extractYTId(raw);
+  if (!id) {
+    if (feedback) { feedback.style.color = 'var(--danger-text)'; feedback.textContent = 'Not a valid YouTube link. Copy the URL from your browser.'; }
+    return;
+  }
+
+  // Lock UI
+  input.value = '';
+  if (btn)      { btn.disabled = true; btn.textContent = 'Adding...'; }
+  if (feedback) { feedback.style.color = 'var(--text-muted)'; feedback.textContent = 'Fetching title...'; }
+
+  // Add placeholder immediately
+  var song = { id: id, title: 'Loading...' };
+  playlist.push(song);
+  render();
+
+  // Get real title
+  try {
+    var res = await fetch('https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=' + encodeURIComponent(id) + '&format=json');
+    if (res.ok) { var data = await res.json(); song.title = data.title || 'YouTube Video'; }
+    else { song.title = 'YouTube Video'; }
+  } catch(e) { song.title = 'YouTube Video'; }
+
+  render();
+  if (feedback) { feedback.style.color = 'var(--text-muted)'; feedback.textContent = 'Saving...'; }
+
+  // Save to server
+  try {
+    lastSnap = JSON.stringify(playlist);
+    var saveRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: lastSnap
+    });
+    if (saveRes.ok) {
+      if (feedback) { feedback.style.color = 'var(--green)'; feedback.textContent = 'Added: ' + song.title; }
+    } else {
+      if (feedback) { feedback.style.color = 'var(--accent)'; feedback.textContent = 'Saved locally (server error ' + saveRes.status + ')'; }
+    }
+  } catch(e) {
+    if (feedback) { feedback.style.color = 'var(--accent)'; feedback.textContent = 'Saved locally (offline - will sync)'; }
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Add Song'; }
+  setTimeout(function() { if (feedback) feedback.textContent = ''; }, 4000);
+}
+
+async function deleteSong(index) {
+  var song = playlist[index];
+  if (!song) return;
+
+  // Track deleted ID
+  if (song.id) {
+    deletedIds.add(song.id);
+    setTimeout(function() { deletedIds.delete(song.id); }, 30000);
+    banSong(song.id);
+  }
+
+  // Remove from local list
+  playlist.splice(index, 1);
+
+  if (index === currentIndex) {
+    currentIndex = -1; isPlaying = false;
+    if (ytPlayer) { try { ytPlayer.stopVideo(); } catch(e) {} }
+    stopProgressTimer(); setProgress(0);
+    if (playlist.length > 0) setTimeout(function() { play(Math.min(index, playlist.length - 1)); }, 300);
+  } else if (index < currentIndex) {
+    currentIndex--;
+  }
+
+  render(); updateNowPlaying(); updatePlayBtn();
+
+  // Stop poll, save, restart poll
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  lastSnap = JSON.stringify(playlist);
+  try {
+    await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap });
+  } catch(e) {}
+  startPolling();
+}
+
+async function deleteSelected() {
+  if (!selectedSongs.size) { alert('No songs selected.'); return; }
+  if (!confirm('Delete ' + selectedSongs.size + ' song(s)?')) return;
+  var indexes = Array.from(selectedSongs).sort(function(a,b) { return b-a; });
+  selectedSongs.clear();
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  indexes.forEach(function(idx) {
+    var song = playlist[idx];
+    if (song && song.id) { deletedIds.add(song.id); banSong(song.id); setTimeout(function() { deletedIds.delete(song.id); }, 30000); }
+    playlist.splice(idx, 1);
+    if (idx === currentIndex) { currentIndex = -1; isPlaying = false; if (ytPlayer) { try { ytPlayer.stopVideo(); } catch(e) {} } stopProgressTimer(); setProgress(0); }
+    else if (idx < currentIndex) currentIndex--;
+  });
+  render(); updateNowPlaying(); updatePlayBtn();
+  lastSnap = JSON.stringify(playlist);
+  try { await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap }); } catch(e) {}
+  startPolling();
+}
+
+// ── Server Sync ──────────────────────────────────────
+async function loadPlaylist() {
+  try {
+    var res = await fetch(apiUrl, { cache: 'no-store' });
+    if (!res.ok) return [];
+    var data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch(e) { return []; }
+}
+
+function playlistsMatch(a, b) {
+  if (a.length !== b.length) return false;
+  for (var i = 0; i < a.length; i++) { if (a[i].id !== b[i].id || a[i].title !== b[i].title) return false; }
+  return true;
+}
+
+async function pollServer() {
+  if (document.hidden) return;
+  try {
+    var next = await loadPlaylist();
+    // Never replace a non-empty playlist with empty (server glitch guard)
+    if (next.length === 0 && playlist.length > 0) return;
+    // Filter out recently deleted songs
+    if (deletedIds.size) {
+      var before = next.length;
+      next = next.filter(function(s) { return !deletedIds.has(s.id); });
+      if (next.length < before) {
+        // Re-push corrected list to server
+        fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(function(){});
+      }
+    }
+    if (!playlistsMatch(playlist, next)) {
+      var playing = currentIndex >= 0 ? playlist[currentIndex] : null;
+      var oldIdx = currentIndex;
+      playlist = next;
+      lastSnap = JSON.stringify(next);
+      if (playing) {
+        var ni = playlist.findIndex(function(s) { return s.id === playing.id; });
+        if (ni !== -1) { currentIndex = ni; }
+        else {
+          currentIndex = -1; isPlaying = false;
+          if (ytPlayer) { try { ytPlayer.stopVideo(); } catch(e) {} }
+          stopProgressTimer(); setProgress(0);
+          if (playlist.length > 0) setTimeout(function() { play(Math.min(oldIdx, playlist.length-1)); }, 300);
+        }
+      }
+      render(); updateNowPlaying(); updatePlayBtn();
+    }
+  } catch(e) {}
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollServer, POLL_MS);
+}
+
+// Save on leave
+window.addEventListener('beforeunload', function() {
+  var snap = JSON.stringify(playlist);
+  if (snap === lastSnap) return;
+  try { navigator.sendBeacon && navigator.sendBeacon(apiUrl, new Blob([snap], { type: 'application/json' })); } catch(e) {}
+});
+
+// ── Banned Songs ─────────────────────────────────────
+async function banSong(id) {
+  bannedIds.add(id);
+  purgeBannedFromRecent();
+  try { await fetch(banApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Array.from(bannedIds)) }); } catch(e) {}
+}
+
+async function loadBanned() {
+  try {
+    var res = await fetch(banApiUrl, { cache: 'no-store' });
+    if (res.ok) { var data = await res.json(); if (Array.isArray(data)) { bannedIds = new Set(data); purgeBannedFromRecent(); } }
+  } catch(e) {}
+}
+
+function purgeBannedFromRecent() {
+  if (!bannedIds.size) return;
+  try {
+    var recent = JSON.parse(localStorage.getItem('pvs_recent') || '[]');
+    var filtered = recent.filter(function(s) { return !bannedIds.has(s.id); });
+    if (filtered.length !== recent.length) { localStorage.setItem('pvs_recent', JSON.stringify(filtered)); renderRecent(); }
+  } catch(e) {}
+}
+
+// ── Recently Played ──────────────────────────────────
+function addToRecent(song) {
+  try {
+    var r = JSON.parse(localStorage.getItem('pvs_recent') || '[]');
+    r = r.filter(function(s) { return s.id !== song.id; });
+    r.unshift({ id: song.id, title: song.title });
+    if (r.length > 10) r = r.slice(0, 10);
+    localStorage.setItem('pvs_recent', JSON.stringify(r));
+    renderRecent();
+  } catch(e) {}
+}
+
+function renderRecent() {
+  var panel = document.getElementById('recentPanel');
+  var wrap  = document.getElementById('recentlyPlayed');
+  if (!panel || !wrap) return;
+  var recent;
+  try { recent = JSON.parse(localStorage.getItem('pvs_recent') || '[]'); } catch(e) { recent = []; }
+  recent = recent.filter(function(s) { return !bannedIds.has(s.id); });
+  if (!recent.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  wrap.innerHTML = recent.map(function(s) {
+    return '<div class="recent-item" onclick="playOrAdd(' + JSON.stringify(s.id) + ',' + JSON.stringify(s.title) + ')">' +
+      '<div class="recent-item-thumb"><img src="' + thumbUrl(s.id) + '" alt="" loading="lazy"></div>' +
+      '<div class="recent-item-title">' + esc(s.title) + '</div></div>';
+  }).join('');
+}
+
+function playOrAdd(id, title) {
+  var idx = playlist.findIndex(function(s) { return s.id === id; });
+  if (idx >= 0) { play(idx); return; }
+  if (bannedIds.has(id)) return;
+  playlist.push({ id: id, title: title });
+  render();
+  play(playlist.length - 1);
+  lastSnap = JSON.stringify(playlist);
+  fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap }).catch(function(){});
+}
+
+// ── Teacher Unlock ───────────────────────────────────
+function unlockTeacher() {
+  if (teacherMode) {
+    teacherMode = false;
+    sessionStorage.setItem('pvs_teacher_' + classParam, 'false');
+    applyTeacherUI(); updatePauseUI(); render(); return;
+  }
+  var pwd = window.prompt('Enter teacher password:');
+  if (!pwd) return;
+  if (pwd !== getPassword() && pwd !== MASTER_PASSWORD) { alert('Incorrect password.'); return; }
+  teacherMode = true;
+  sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
+  applyTeacherUI(); updatePasteBtn(); updatePauseUI(); render();
+}
+
+function unlockFromOverlay() {
+  var pwd = window.prompt('Enter master password:');
+  if (!pwd) return;
+  if (pwd !== MASTER_PASSWORD && pwd !== getPassword()) { alert('Incorrect password.'); return; }
+  teacherMode = true;
+  sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
+  applyTeacherUI(); updatePauseUI();
+}
+
+// ── Select / Copy / Paste ────────────────────────────
+function selectAll()   { selectedSongs.clear(); playlist.forEach(function(_,i) { selectedSongs.add(i); }); render(); }
+function deselectAll() { selectedSongs.clear(); render(); }
+
+function copySelected() {
+  if (!selectedSongs.size) { alert('Select songs first.'); return; }
+  var songs = [];
+  selectedSongs.forEach(function(i) { if (playlist[i]) songs.push({ id: playlist[i].id, title: playlist[i].title }); });
+  localStorage.setItem('pvs_clipboard', JSON.stringify(songs));
+  alert('Copied ' + songs.length + ' song(s). Go to another class and Paste.');
+  updatePasteBtn();
+}
+
+function updatePasteBtn() {
+  var btn = document.getElementById('pasteBtn');
+  if (!btn) return;
+  var songs = [];
+  try { songs = JSON.parse(localStorage.getItem('pvs_clipboard') || '[]'); } catch(e) {}
+  btn.disabled = !songs.length;
+  btn.textContent = songs.length ? 'Paste ' + songs.length + ' Song(s)' : 'Paste Songs';
+}
+
+async function pasteSongs() {
+  var songs = [];
+  try { songs = JSON.parse(localStorage.getItem('pvs_clipboard') || '[]'); } catch(e) {}
+  if (!songs.length) return;
+  var existing = new Set(playlist.map(function(s) { return s.id; }));
+  songs.forEach(function(s) { if (!existing.has(s.id)) playlist.push({ id: s.id, title: s.title }); });
+  render(); updateNowPlaying();
+  lastSnap = JSON.stringify(playlist);
+  try { await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap }); } catch(e) {}
+}
+
+// ── Pause / Lock System ──────────────────────────────
+async function togglePauseAll() {
+  classPaused = !classPaused;
+  try { await fetch(pauseApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paused: classPaused, locked: classLocked }) }); } catch(e) {}
+  updatePauseUI();
+}
+
+async function toggleLockAll() {
+  classLocked = !classLocked;
+  try { await fetch(pauseApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paused: classPaused, locked: classLocked }) }); } catch(e) {}
+  updatePauseUI();
+}
+
+async function pollPause() {
+  try {
+    var res = await fetch(pauseApiUrl, { cache: 'no-store' });
+    if (!res.ok) return;
+    var data = await res.json();
+    classPaused = !!data.paused;
+    classLocked = !!data.locked;
+    updatePauseUI();
+  } catch(e) {}
+}
+
+function updatePauseUI() {
+  var overlay   = document.getElementById('pauseOverlay');
+  var icon      = document.getElementById('pauseOverlayIcon');
+  var title     = document.getElementById('pauseOverlayTitle');
+  var text      = document.getElementById('pauseOverlayText');
+  var pauseBtn  = document.getElementById('pauseAllBtn');
+  var lockBtn   = document.getElementById('lockAllBtn');
+
+  // Teacher never sees overlay
+  if (overlay) overlay.style.display = (!teacherMode && (classPaused || classLocked)) ? '' : 'none';
+
+  if (pauseBtn) { pauseBtn.textContent = classPaused ? 'Resume All' : 'Pause All'; pauseBtn.className = 'btn btn-sm ' + (classPaused ? 'btn-gold' : 'btn-danger'); }
+  if (lockBtn)  { lockBtn.textContent  = classLocked ? '\ud83d\udd13 Unlock' : '\ud83d\udd12 Lock Playback'; }
+
+  if (classPaused || classLocked) {
+    if (!teacherMode && ytPlayer && isPlaying) { try { ytPlayer.pauseVideo(); } catch(e) {} }
+    if (icon)  icon.textContent  = classLocked ? '\ud83d\udd12' : '||';
+    if (title) title.textContent = classLocked ? 'Playback Locked' : 'Playback Paused';
+    if (text)  text.textContent  = classLocked ? 'Your teacher has locked playback.' : 'Your teacher has paused playback.';
+  }
+}
+
+// ── Schedule ─────────────────────────────────────────
+var scheduleActive = false;
+var scheduleTimer  = null;
+var schedStart = null, schedEnd = null;
+
+function toggleSchedule() {
+  if (scheduleActive) {
+    scheduleActive = false; schedStart = null; schedEnd = null;
+    if (scheduleTimer) { clearInterval(scheduleTimer); scheduleTimer = null; }
+    var btn = document.getElementById('scheduleBtn');
+    var st  = document.getElementById('scheduleStatus');
+    if (btn) { btn.textContent = 'Set Schedule'; btn.className = 'btn btn-outline btn-sm'; }
+    if (st)  st.textContent = '';
+    return;
+  }
+  var s = document.getElementById('scheduleStart').value;
+  var e = document.getElementById('scheduleEnd').value;
+  if (!s || !e) { alert('Set both a start and end time.'); return; }
+  schedStart = s; schedEnd = e; scheduleActive = true;
+  var btn = document.getElementById('scheduleBtn');
+  if (btn) { btn.textContent = 'Clear Schedule'; btn.className = 'btn btn-gold btn-sm'; }
+  scheduleTimer = setInterval(tickSchedule, 10000);
+  tickSchedule();
+}
+
+function toMins(hhmm) { var p = hhmm.split(':'); return parseInt(p[0],10)*60+parseInt(p[1],10); }
+
+function tickSchedule() {
+  if (!scheduleActive) return;
+  var now = new Date(); var cur = now.getHours()*60+now.getMinutes();
+  var s = toMins(schedStart); var e = toMins(schedEnd);
+  var inWin = s <= e ? (cur >= s && cur < e) : (cur >= s || cur < e);
+  if (inWin && !isPlaying && playlist.length) { currentIndex < 0 ? play(0) : (function(){ try { ytPlayer && ytPlayer.playVideo(); isPlaying=true; updatePlayBtn(); } catch(err){} })(); }
+  else if (!inWin && isPlaying) { try { ytPlayer && ytPlayer.pauseVideo(); } catch(err){} }
+  var st = document.getElementById('scheduleStatus');
+  if (st) { st.textContent = inWin ? '\u25b6 Playing' : '\u23f8 Waiting...'; st.style.color = inWin ? 'var(--accent)' : 'var(--text-muted)'; }
+}
+
+// ── Auto Volume Normalisation ─────────────────────────
+var normTimer = null;
+function startNorm() {
+  if (normTimer) clearTimeout(normTimer);
+  normTimer = setTimeout(function() {
+    if (!ytPlayer || !ytPlayer.getVolume) return;
+    try {
+      var cur = ytPlayer.getVolume(); var target = 80;
+      if (Math.abs(cur - target) > 12) {
+        var steps = 20; var delta = (target - cur) / steps; var step = 0;
+        var ramp = setInterval(function() {
+          if (!ytPlayer || step >= steps) { clearInterval(ramp); return; }
+          cur += delta; try { ytPlayer.setVolume(Math.round(Math.max(0,Math.min(100,cur)))); } catch(e){}
+          step++;
+          if (step >= steps) { clearInterval(ramp); currentVolume = target; var sl=document.getElementById('volumeSlider'); if(sl) sl.value=target; localStorage.setItem('pvs_volume',target); updateVolumeIcon(); }
+        }, 80);
+      }
+    } catch(e) {}
+  }, 3000);
+}
+
+// ── Song Analytics ───────────────────────────────────
+async function trackPlay(song) {
+  try { await fetch('/api/analytics/' + encodeURIComponent(classParam), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ class: classParam, songId: song.id, songTitle: song.title || 'YouTube Video' }) }); } catch(e) {}
+}
+
+// ── Most Played ──────────────────────────────────────
+async function renderMostPlayed() {
+  var panel = document.getElementById('mostPlayedPanel');
+  var list  = document.getElementById('mostPlayedList');
+  if (!panel || !list) return;
+  try {
+    var res = await fetch('/api/analytics/' + encodeURIComponent(classParam), { cache: 'no-store' });
+    if (!res.ok) { panel.style.display = 'none'; return; }
+    var data = await res.json();
+    var songs = (Array.isArray(data) ? data : (data.songs || [])).filter(function(s){ return s.count > 0; }).sort(function(a,b){ return b.count-a.count; }).slice(0,5);
+    if (!songs.length) { panel.style.display = 'none'; return; }
+    panel.style.display = '';
+    var byId = {}; playlist.forEach(function(s){ byId[s.id]=s; });
+    var medals = ['\ud83e\udd47','\ud83e\udd48','\ud83e\udd49','\u2b50','\u2b50'];
+    list.innerHTML = songs.map(function(s,i) {
+      var title = (byId[s.id] && byId[s.id].title) || s.title || 'Unknown';
+      var pct = songs[0].count > 0 ? Math.round(s.count/songs[0].count*100) : 0;
+      return '<div class="most-played-row" onclick="playById(\'' + esc(s.id) + '\')">' +
+        '<span class="most-played-medal">' + medals[i] + '</span>' +
+        '<img class="most-played-thumb" src="' + thumbUrl(s.id) + '" alt="">' +
+        '<div class="most-played-info"><div class="most-played-title">' + esc(title) + '</div>' +
+        '<div class="most-played-bar"><div class="most-played-fill" style="width:' + pct + '%"></div></div></div>' +
+        '<span class="most-played-count">' + s.count + '<small>plays</small></span></div>';
+    }).join('');
+  } catch(e) { panel.style.display = 'none'; }
+}
+
+function playById(id) { var i = playlist.findIndex(function(s){ return s.id===id; }); if (i>=0) play(i); }
+
+// ── Song Request System ──────────────────────────────
+var reqCooldown = 0;
+var reqCooldownMs = 30000;
+
+async function submitRequest() {
+  var input    = document.getElementById('requestInput');
+  var feedback = document.getElementById('requestFeedback');
+  var text     = (input.value || '').trim();
+  if (!text) { showReqFeedback('Please type a song name.', 'error'); return; }
+  var now = Date.now();
+  if (now - reqCooldown < reqCooldownMs) { showReqFeedback('Please wait ' + Math.ceil((reqCooldownMs-(now-reqCooldown))/1000) + 's', 'error'); return; }
+  reqCooldown = now; input.value = ''; input.disabled = true;
+  try {
+    var existing = await fetchRequests();
+    if (existing.some(function(r){ return !r.done && r.text.toLowerCase() === text.toLowerCase(); })) { showReqFeedback('Already requested!', 'info'); input.disabled=false; return; }
+    existing.push({ id: Date.now(), text: text, ts: new Date().toISOString(), done: false });
+    await fetch(reqApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(existing) });
+    showReqFeedback('Request sent! Your teacher will see it.', 'success');
+  } catch(e) { showReqFeedback('Could not send request - check connection.', 'error'); }
+  input.disabled = false;
+}
+
+function showReqFeedback(msg, type) {
+  var el = document.getElementById('requestFeedback');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'request-feedback request-feedback-' + type;
+  setTimeout(function(){ el.textContent=''; el.className='request-feedback'; }, 5000);
+}
+
+async function fetchRequests() {
+  try { var res = await fetch(reqApiUrl, { cache:'no-store' }); if (!res.ok) return []; var data=await res.json(); return Array.isArray(data)?data:[]; } catch(e){ return []; }
+}
+
+async function renderRequestQueue() {
+  var panel = document.getElementById('requestQueuePanel');
+  var list  = document.getElementById('requestQueue');
+  if (!panel || !list || !teacherMode) { if(panel) panel.style.display='none'; return; }
+  var reqs  = await fetchRequests();
+  var pending = reqs.filter(function(r){ return !r.done; });
+  panel.style.display = '';
+  if (!pending.length) { list.innerHTML = '<div class="request-empty">No pending requests.</div>'; return; }
+  list.innerHTML = pending.map(function(r) {
+    var time = (function(){ try{ var d=new Date(r.ts); return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } })();
+    return '<div class="request-row"><div class="request-row-text"><span class="request-row-song">' + esc(r.text) + '</span><span class="request-row-time">' + esc(time) + '</span></div>' +
+      '<div class="request-row-actions">' +
+        '<button class="btn btn-sm btn-gold" onclick="approveReq(' + r.id + ',\'' + esc(r.text) + '\')">Add to Playlist</button>' +
+        '<button class="btn btn-sm btn-danger" onclick="dismissReq(' + r.id + ')">Dismiss</button></div></div>';
+  }).join('');
+}
+
+function approveReq(id, text) {
+  window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(text), '_blank');
+  dismissReq(id);
+}
+
+async function dismissReq(id) {
+  var reqs = await fetchRequests();
+  reqs = reqs.map(function(r){ return r.id===id ? Object.assign({},r,{done:true}) : r; });
+  await fetch(reqApiUrl, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(reqs) });
+  renderRequestQueue();
+}
+
+async function clearAllRequests() {
+  if (!confirm('Clear all requests?')) return;
+  await fetch(reqApiUrl, { method:'PUT', headers:{'Content-Type':'application/json'}, body: '[]' });
+  renderRequestQueue();
+}
+
+// ── Offline Detection ────────────────────────────────
+var isOffline = false;
+function initOffline() {
+  window.addEventListener('online',  onOnline);
+  window.addEventListener('offline', onOffline);
+  if (!navigator.onLine) onOffline();
+}
+
+function onOffline() {
+  if (isOffline) return; isOffline = true;
+  var banner = document.getElementById('offlineBanner');
+  var text   = document.getElementById('offlineBannerText');
+  if (text) text.textContent = isPlaying ? 'No internet - music continues until this song ends' : 'No internet connection - reconnecting...';
+  if (banner) { banner.style.display=''; banner.classList.add('offline-banner-visible'); }
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function onOnline() {
+  if (!isOffline) return; isOffline = false;
+  var banner = document.getElementById('offlineBanner');
+  var text   = document.getElementById('offlineBannerText');
+  if (text) text.textContent = 'Back online - syncing...';
+  if (banner) banner.classList.add('offline-banner-back');
+  setTimeout(function() {
+    if (banner) { banner.style.display='none'; banner.classList.remove('offline-banner-visible','offline-banner-back'); }
+  }, 2500);
+  startPolling(); pollPause();
+}
+
+// ── Admin Panel ──────────────────────────────────────
+var analyticsPollTimer = null;
 
 function openAdmin() {
   var pwd = window.prompt('Enter master password:');
-  if (pwd === null) return;
-  if (pwd !== MASTER_PASSWORD) {
-    window.alert('Incorrect master password.');
-    return;
-  }
-  populateAdmin();
-  document.getElementById('adminOverlay').style.display = '';
-  startAnalyticsPolling();
-}
-
-function closeAdmin() {
-  document.getElementById('adminOverlay').style.display = 'none';
-  stopAnalyticsPolling();
-}
-
-function populateAdmin() {
+  if (!pwd || (pwd !== MASTER_PASSWORD)) { alert('Incorrect master password.'); return; }
   document.getElementById('adminPwdInput').value = getPassword();
   document.getElementById('adminPwdInput').type = 'password';
   document.getElementById('adminPwdToggle').textContent = 'Show';
   document.getElementById('adminTeacherToggle').checked = teacherMode;
   document.getElementById('adminStudentToggle').checked = studentMode;
-  document.getElementById('adminFocusToggle').checked = focusMode;
-  var forceTheme = localStorage.getItem('pvs_force_theme') || 'auto';
-  document.getElementById('adminThemeSelect').value = forceTheme;
+  document.getElementById('adminFocusToggle').checked   = focusMode;
+  document.getElementById('adminThemeSelect').value     = localStorage.getItem('pvs_force_theme') || 'auto';
+  document.getElementById('adminOverlay').style.display = '';
+  loadAnalytics();
+  analyticsPollTimer = setInterval(loadAnalytics, 10000);
+}
+
+function closeAdmin() {
+  document.getElementById('adminOverlay').style.display = 'none';
+  if (analyticsPollTimer) { clearInterval(analyticsPollTimer); analyticsPollTimer = null; }
 }
 
 function toggleAdminPwdVis() {
   var inp = document.getElementById('adminPwdInput');
   var btn = document.getElementById('adminPwdToggle');
-  if (inp.type === 'password') {
-    inp.type = 'text';
-    btn.textContent = 'Hide';
-  } else {
-    inp.type = 'password';
-    btn.textContent = 'Show';
-  }
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? 'Show' : 'Hide';
 }
 
 function saveAdminPassword() {
   var pwd = document.getElementById('adminPwdInput').value.trim();
   if (!pwd) { alert('Password cannot be empty.'); return; }
-  setPassword(pwd);
+  localStorage.setItem('pvs_teacher_password', pwd);
   alert('Password saved.');
 }
 
 function resetPassword() {
-  setPassword(DEFAULT_PASSWORD);
+  localStorage.setItem('pvs_teacher_password', DEFAULT_PASSWORD);
   document.getElementById('adminPwdInput').value = DEFAULT_PASSWORD;
-  alert('Password reset to default (' + DEFAULT_PASSWORD + ').');
-}
-
-function adminClearCurrent() {
-  if (!confirm('Clear the current class playlist? This cannot be undone.')) return;
-  playlist = [];
-  currentIndex = -1;
-  isPlaying = false;
-  if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
-  stopProgressTimer();
-  setProgress(0);
-  save();
-  render();
-  updateNowPlaying();
-  updatePlayButton();
-  alert('Playlist cleared.');
-}
-
-function adminClearAll() {
-  if (!confirm('Clear ALL class playlists across the entire school? This cannot be undone.')) return;
-  var promises = ALL_CLASSES.map(function(cls) {
-    return fetch('/api/playlist/' + encodeURIComponent(cls), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify([])
-    }).catch(function(){});
-  });
-  Promise.all(promises).then(function() {
-    playlist = [];
-    currentIndex = -1;
-    isPlaying = false;
-    if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
-    stopProgressTimer();
-    setProgress(0);
-    render();
-    updateNowPlaying();
-    updatePlayButton();
-    alert('All playlists cleared.');
-  });
-}
-
-function adminRemoveDupes() {
-  var seen = new Set();
-  var deduped = [];
-  for (var j = 0; j < playlist.length; j++) {
-    if (!seen.has(playlist[j].id)) {
-      seen.add(playlist[j].id);
-      deduped.push(playlist[j]);
-    }
-  }
-  var removed = playlist.length - deduped.length;
-  if (removed === 0) { alert('No duplicates found.'); return; }
-  playlist = deduped;
-  if (currentIndex >= playlist.length) currentIndex = playlist.length - 1;
-  save();
-  render();
-  updateNowPlaying();
-  alert('Removed ' + removed + ' duplicate(s).');
+  alert('Reset to default: ' + DEFAULT_PASSWORD);
 }
 
 function toggleAdminTeacher() {
-  var checked = document.getElementById('adminTeacherToggle').checked;
-  teacherMode = checked;
-  sessionStorage.setItem('pvs_teacher_' + classParam, checked ? 'true' : 'false');
-  if (!checked) selectedSongs.clear();
-  applyTeacherUI();
-  if (checked) updatePasteButton();
-  updatePauseUI();
-  render();
+  teacherMode = document.getElementById('adminTeacherToggle').checked;
+  sessionStorage.setItem('pvs_teacher_' + classParam, teacherMode ? 'true' : 'false');
+  if (!teacherMode) selectedSongs.clear();
+  applyTeacherUI(); if (teacherMode) updatePasteBtn(); updatePauseUI(); render();
 }
 
 function toggleAdminStudent() {
@@ -647,1629 +1316,151 @@ function toggleAdminFocus() {
 }
 
 function setAdminTheme() {
-  var val = document.getElementById('adminThemeSelect').value;
-  localStorage.setItem('pvs_force_theme', val);
-  if (val === 'dark' || val === 'light') {
-    applyTheme(val);
-  }
+  var v = document.getElementById('adminThemeSelect').value;
+  localStorage.setItem('pvs_force_theme', v);
+  if (v === 'dark' || v === 'light') applyTheme(v);
 }
 
-/* ═══════════════════════════════════════════════
-   Playlist API
-   ═══════════════════════════════════════════════ */
-async function fetchRemotePlaylist() {
-  var res = await fetch(apiUrl, { cache: 'no-store' });
-  if (!res.ok) return [];
+async function adminClearCurrent() {
+  if (!confirm('Clear the current playlist?')) return;
+  playlist = []; currentIndex = -1; isPlaying = false;
+  if (ytPlayer) { try { ytPlayer.stopVideo(); } catch(e) {} }
+  stopProgressTimer(); setProgress(0);
+  lastSnap = '[]';
+  await fetch(apiUrl, { method:'PUT', headers:{'Content-Type':'application/json'}, body:'[]' });
+  render(); updateNowPlaying(); updatePlayBtn();
+  alert('Playlist cleared.');
+}
+
+async function adminClearAll() {
+  if (!confirm('Clear ALL class playlists?')) return;
+  await Promise.all(ALL_CLASSES.map(function(c){ return fetch('/api/playlist/'+encodeURIComponent(c),{method:'PUT',headers:{'Content-Type':'application/json'},body:'[]'}).catch(function(){}); }));
+  playlist=[]; currentIndex=-1; isPlaying=false;
+  if(ytPlayer){try{ytPlayer.stopVideo();}catch(e){}}
+  stopProgressTimer(); setProgress(0); lastSnap='[]';
+  render(); updateNowPlaying(); updatePlayBtn();
+  alert('All playlists cleared.');
+}
+
+function adminRemoveDupes() {
+  var seen = new Set(); var deduped = [];
+  playlist.forEach(function(s){ if(!seen.has(s.id)){ seen.add(s.id); deduped.push(s); } });
+  var removed = playlist.length - deduped.length;
+  if (!removed) { alert('No duplicates found.'); return; }
+  playlist = deduped;
+  if (currentIndex >= playlist.length) currentIndex = playlist.length - 1;
+  render(); updateNowPlaying();
+  lastSnap = JSON.stringify(playlist);
+  fetch(apiUrl,{method:'PUT',headers:{'Content-Type':'application/json'},body:lastSnap}).catch(function(){});
+  alert('Removed ' + removed + ' duplicate(s).');
+}
+
+async function loadAnalytics() {
+  var container = document.getElementById('analyticsContent');
+  if (!container) return;
   try {
-    var data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch(e) { return []; }
-}
-
-async function save() {
-  saveQueued = true;
-  try { localStorage.setItem('pvs_pending_' + classParam, playlistSnapshot()); } catch(e) {}
-  if (saveInFlight) return;
-  while (saveQueued) {
-    saveQueued = false;
-    saveInFlight++;
-    try {
-      var snap = JSON.stringify(playlist);
-      var res = await fetch(apiUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: snap
-      });
-      if (res.ok) {
-        lastSavedSnapshot = snap;
-        try { localStorage.removeItem('pvs_pending_' + classParam); } catch(e) {}
-        // Do NOT applyRemotePlaylist() here — the server response may be stale or empty,
-        // which would wipe the local playlist. The polling loop (pollRemote) handles
-        // syncing from the server on its own schedule.
-      }
-    } catch (e) {
-    } finally {
-      saveInFlight--;
-    }
-  }
-}
-
-function applyRemotePlaylist(next) {
-  var before = currentIndex >= 0 ? playlist[currentIndex] : null;
-  var beforeIndex = currentIndex; // position of playing song in OLD list
-  playlist = next;
-  lastSavedSnapshot = JSON.stringify(next);
-  if (before) {
-    var newIdx = playlist.findIndex(function(s){ return s.id === before.id; });
-    if (newIdx !== -1) {
-      // Song still exists, just track its new position
-      currentIndex = newIdx;
-    } else {
-      // Playing song was deleted — auto-skip to what was next
-      currentIndex = -1;
-      isPlaying = false;
-      if (ytPlayer && ytPlayer.stopVideo) {
-        try { ytPlayer.stopVideo(); } catch (e) {}
-      }
-      stopProgressTimer();
-      setProgress(0);
-      // Play the song that now occupies the deleted song's old position (or last song)
-      if (playlist.length > 0) {
-        var nextIdx = Math.min(beforeIndex, playlist.length - 1);
-        setTimeout(function() { play(nextIdx); }, 300);
-      }
-    }
-  }
-  render();
-  updateNowPlaying();
-  updatePlayButton();
-}
-
-async function pollRemote() {
-  if (saveInFlight || saveQueued) return;
-  if (document.hidden) return;
-  try {
-    var next = await fetchRemotePlaylist();
-    // Guard: never silently replace a non-empty local playlist with an empty server response
-    if (next.length === 0 && playlist.length > 0) return;
-    // Strip any songs the user just deleted (server may not have saved yet)
-    if (recentlyDeletedIds.size > 0) {
-      var before = next.length;
-      next = next.filter(function(s) { return !recentlyDeletedIds.has(s.id); });
-      // If we stripped something, re-push the correct list to server immediately
-      if (next.length !== before) {
-        fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(function(){});
-      }
-    }
-    if (!playlistsEqual(playlist, next)) {
-      applyRemotePlaylist(next);
-    }
-  } catch (e) {}
-}
-
-function playlistsEqual(a, b) {
-  if (a.length !== b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i].id !== b[i].id || a[i].title !== b[i].title) return false;
-  }
-  return true;
-}
-
-function startPolling() {
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(pollRemote, POLL_INTERVAL_MS);
-}
-
-/* ═══════════════════════════════════════════════
-   Save-on-Leave  – flush pending saves before the
-   page unloads so navigating to "All Classes" never
-   loses songs.
-   ═══════════════════════════════════════════════ */
-var lastSavedSnapshot = '[]';
-
-function playlistSnapshot() {
-  return JSON.stringify(playlist);
-}
-
-function flushSave() {
-  var snap = playlistSnapshot();
-  if (snap === lastSavedSnapshot && !saveInFlight && !saveQueued) return;
-  try { localStorage.setItem('pvs_pending_' + classParam, snap); } catch (e) {}
-  if (navigator.sendBeacon) {
-    try {
-      if (navigator.sendBeacon(apiUrl, new Blob([snap], { type: 'application/json' }))) return;
-    } catch (e) {}
-  }
-  try {
-    fetch(apiUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: snap,
-      keepalive: true
+    var results = await Promise.all(ALL_CLASSES.map(function(c){
+      return fetch('/api/analytics/'+encodeURIComponent(c),{cache:'no-store'}).then(function(r){ return r.ok?r.json():[]; }).catch(function(){ return []; });
+    }));
+    var html = '';
+    ALL_CLASSES.forEach(function(c, i) {
+      var songs = (Array.isArray(results[i]) ? results[i] : (results[i].songs||[])).filter(function(s){ return s.count>0; }).sort(function(a,b){ return b.count-a.count; });
+      if (!songs.length) return;
+      html += '<div class="analytics-class"><div class="analytics-class-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\' none\'">' +
+        '<span class="analytics-class-name">' + esc(c.charAt(0).toUpperCase()+c.slice(1)) + '</span>' +
+        '<span class="analytics-class-stats">' + songs.length + ' songs tracked</span></div>' +
+        '<div class="analytics-class-body"><table class="analytics-table"><thead><tr><th>Song</th><th>Plays</th></tr></thead><tbody>' +
+        songs.slice(0,10).map(function(s){ return '<tr><td>' + esc(s.title||s.songId||s.id||'Unknown') + '</td><td class="analytics-count">' + s.count + '</td></tr>'; }).join('') +
+        '</tbody></table></div></div>';
     });
-  } catch (e) {}
+    container.innerHTML = html || '<p style="color:var(--text-muted);font-size:13px;">No analytics data yet.</p>';
+  } catch(e) { container.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Could not load analytics.</p>'; }
 }
 
-window.addEventListener('beforeunload', flushSave);
-window.addEventListener('pagehide', flushSave);
-
-document.addEventListener('visibilitychange', function() {
-  if (document.visibilityState === 'hidden') flushSave();
-});
-
-/* ═══════════════════════════════════════════════
-   YouTube Helpers
-   ═══════════════════════════════════════════════ */
-function extractID(url) {
-  var trimmed = String(url).trim();
-  var regExp = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/;
-  var match = trimmed.match(regExp);
-  return match ? match[1] : null;
-}
-
-function thumbUrl(id) {
-  return 'https://img.youtube.com/vi/' + id + '/mqdefault.jpg';
-}
-
-async function fetchTitle(id) {
-  try {
-    var res = await fetch(
-      'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=' +
-        encodeURIComponent(id) + '&format=json'
-    );
-    if (!res.ok) return null;
-    var data = await res.json();
-    return data.title || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-/* ═══════════════════════════════════════════════
-   Add / Delete Songs
-   ═══════════════════════════════════════════════ */
-async function addSong() {
-  var inputEl = document.getElementById('linkInput');
-  var addBtn  = document.getElementById('addBtn');
-  var raw = inputEl.value.trim();
-  if (!raw) return;
-
-  var id = extractID(raw);
-  if (!id) { alert('That doesn't look like a YouTube link. Copy the URL from your browser address bar.'); return; }
-
-  // Prevent double-submit
-  if (addBtn) { addBtn.disabled = true; addBtn.innerText = 'Adding…'; }
-  inputEl.value = '';
-
-  // Add to local list immediately so teacher sees it
-  var song = { id: id, title: 'Loading…' };
-  playlist.push(song);
-  render();
-
-  // Fetch real title
-  var title = await fetchTitle(id);
-  song.title = title || 'YouTube Video';
-  render();
-
-  // Save to server
-  try {
-    var snap = JSON.stringify(playlist);
-    lastSavedSnapshot = snap;
-    var res = await fetch(apiUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: snap
-    });
-    if (!res.ok) {
-      alert('Saved locally but couldn't reach the server (status ' + res.status + '). The song will sync when connection is restored.');
-    }
-  } catch(e) {
-    alert('Saved locally but couldn't reach the server. The song will sync when connection is restored.');
-  }
-
-  if (addBtn) { addBtn.disabled = false; addBtn.innerText = 'Add Song'; }
-}
-
-
-
-
+// ── Backfill missing titles ──────────────────────────
 async function backfillTitles() {
   var changed = false;
-  for (var k = 0; k < playlist.length; k++) {
-    var song = playlist[k];
-    if (!song.title || song.title === 'YouTube Video' || song.title === 'Loading…' || song.title === 'Loading...') {
-      var title = await fetchTitle(song.id);
-      if (title) {
-        song.title = title;
-        changed = true;
-      }
+  for (var i = 0; i < playlist.length; i++) {
+    var s = playlist[i];
+    if (!s.title || s.title === 'YouTube Video' || s.title === 'Loading...') {
+      try {
+        var res = await fetch('https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=' + encodeURIComponent(s.id) + '&format=json');
+        if (res.ok) { var d = await res.json(); if (d.title) { s.title = d.title; changed = true; } }
+      } catch(e) {}
     }
   }
   if (changed) {
-    save();
-    render();
-    updateNowPlaying();
+    render(); updateNowPlaying();
+    lastSnap = JSON.stringify(playlist);
+    fetch(apiUrl,{method:'PUT',headers:{'Content-Type':'application/json'},body:lastSnap}).catch(function(){});
   }
 }
 
-async function deleteSong(index) {
-  var song = playlist[index];
-  var wasPlaying = index === currentIndex;
-  var wasIndex = index;
-
-  // 1. Remove locally and update UI immediately
-  if (song && song.id) {
-    recentlyDeletedIds.add(song.id);
-    // Keep in the set for 30s as a safety net
-    setTimeout(function() { recentlyDeletedIds.delete(song.id); }, 30000);
-  }
-
-  playlist.splice(index, 1);
-
-  if (wasPlaying) {
-    currentIndex = -1;
-    isPlaying = false;
-    if (ytPlayer && ytPlayer.stopVideo) {
-      try { ytPlayer.stopVideo(); } catch (e) {}
-    }
-    stopProgressTimer();
-    setProgress(0);
-    // Auto-play next song
-    if (playlist.length > 0) {
-      var nextIdx = Math.min(wasIndex, playlist.length - 1);
-      setTimeout(function() { play(nextIdx); }, 200);
-    }
-  } else if (index < currentIndex) {
-    currentIndex--;
-  }
-
-  render();
-  updateNowPlaying();
-  updatePlayButton();
-
-  // 2. Stop polling while we commit the delete
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-
-  // 3. Directly PUT the new playlist — don't go through the save() queue
-  var deleteSnap = JSON.stringify(playlist);
-  lastSavedSnapshot = deleteSnap;
-  try {
-    var delRes = await fetch(apiUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: deleteSnap
-    });
-    if (!delRes.ok) {
-      // If server rejected, try once more
-      await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: deleteSnap });
-    }
-  } catch(e) {}
-
-  // 4. Restart polling now that the server has the updated list
-  startPolling();
-
-  // 5. Ban from recently-played on all devices
-  if (song && song.id) banSong(song.id);
-}
-
-/* ═══════════════════════════════════════════════
-   Banned Songs — purge deleted songs from Recently Played everywhere
-   ═══════════════════════════════════════════════ */
-var bannedApiUrl = '/api/banned/' + encodeURIComponent(classParam);
-var bannedIds = new Set();
-
-async function loadBanned() {
-  try {
-    var res = await fetch(bannedApiUrl, { cache: 'no-store' });
-    if (res.ok) {
-      var data = await res.json();
-      if (Array.isArray(data)) {
-        bannedIds = new Set(data);
-        purgeBannedFromRecent();
-      }
-    }
-  } catch (e) {}
-}
-
-async function banSong(id) {
-  bannedIds.add(id);
-  purgeBannedFromRecent();
-  try {
-    await fetch(bannedApiUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(Array.from(bannedIds))
-    });
-  } catch (e) {}
-}
-
-function purgeBannedFromRecent() {
-  if (bannedIds.size === 0) return;
-  try {
-    var recent = JSON.parse(localStorage.getItem('pvs_recently_played') || '[]');
-    var filtered = recent.filter(function(s) { return !bannedIds.has(s.id); });
-    if (filtered.length !== recent.length) {
-      localStorage.setItem('pvs_recently_played', JSON.stringify(filtered));
-      renderRecentlyPlayed();
-    }
-  } catch (e) {}
-}
-
-/* ═══════════════════════════════════════════════
-   YouTube Player
-   ═══════════════════════════════════════════════ */
-function onYouTubeIframeAPIReady() {
-  ytReady = true;
-  if (pendingPlay !== null) {
-    var i = pendingPlay;
-    pendingPlay = null;
-    play(i);
-  }
-}
-
-function play(index) {
-  if ((classPaused || classLocked) && !teacherMode) return;
-  if (!playlist.length || index < 0 || index >= playlist.length) return;
-  currentIndex = index;
-
-  if (!ytReady) {
-    pendingPlay = index;
-    return;
-  }
-
-  if (!ytPlayer) {
-    ytPlayer = new YT.Player('player', {
-      width: '0',
-      height: '0',
-      videoId: playlist[index].id,
-      playerVars: {
-        autoplay: 1,
-        playsinline: 1,
-        rel: 0,
-        modestbranding: 1
-      },
-      events: {
-        onReady: function(e) {
-          e.target.setVolume(currentVolume);
-          e.target.playVideo();
-        },
-        onStateChange: onPlayerStateChange
-      }
-    });
-  } else {
-    ytPlayer.loadVideoById(playlist[index].id);
-    try { ytPlayer.setVolume(currentVolume); } catch(e){}
-  }
-
-  isPlaying = true;
-  addToRecentlyPlayed(playlist[index]);
-  trackSongPlay(playlist[index]);
-  render();
-  updateNowPlaying();
-  updatePlayButton();
-  setProgress(0);
-  setTimeDisplay(0, 0);
-  startProgressTimer();
-  startNormalisation();
-}
-
-function onPlayerStateChange(e) {
-  if (e.data === YT.PlayerState.ENDED) {
-    if (repeatMode === 'one') {
-      play(currentIndex);
-    } else {
-      next();
-    }
-    return;
-  }
-  if (e.data === YT.PlayerState.PLAYING) {
-    if ((classPaused || classLocked) && !teacherMode) {
-      try { ytPlayer.pauseVideo(); } catch (err) {}
-      return;
-    }
-    isPlaying = true;
-    startProgressTimer();
-  } else if (e.data === YT.PlayerState.PAUSED) {
-    isPlaying = false;
-    stopProgressTimer();
-  }
-  updatePlayButton();
-}
-
-function togglePlay() {
-  if ((classPaused || classLocked) && !teacherMode) return;
-  if (currentIndex < 0) {
-    if (playlist.length) play(0);
-    return;
-  }
-  if (!ytPlayer) return;
-  try {
-    if (isPlaying) ytPlayer.pauseVideo();
-    else ytPlayer.playVideo();
-  } catch (e) {}
-}
-
-function toggleShuffle() {
-  shuffle = !shuffle;
-  var btn = document.getElementById('shuffleBtn');
-  if (btn) {
-    btn.innerText = 'Shuffle: ' + (shuffle ? 'On' : 'Off');
-    btn.classList.toggle('btn-gold', shuffle);
-    btn.classList.toggle('btn-outline', !shuffle);
-  }
-}
-
-function cycleRepeat() {
-  if (repeatMode === 'none') repeatMode = 'all';
-  else if (repeatMode === 'all') repeatMode = 'one';
-  else repeatMode = 'none';
-  localStorage.setItem('pvs_repeat_mode', repeatMode);
-  updateRepeatButton();
-}
-
-function updateRepeatButton() {
-  var btn = document.getElementById('repeatBtn');
-  if (!btn) return;
-  if (repeatMode === 'one') {
-    btn.textContent = '🔂';
-    btn.classList.add('repeat-active');
-    btn.setAttribute('aria-label', 'Repeat: one');
-  } else if (repeatMode === 'all') {
-    btn.textContent = '🔁';
-    btn.classList.add('repeat-active');
-    btn.setAttribute('aria-label', 'Repeat: all');
-  } else {
-    btn.textContent = '🔁';
-    btn.classList.remove('repeat-active');
-    btn.setAttribute('aria-label', 'Repeat: off');
-  }
-}
-
-function next() {
-  if (!playlist.length) return;
-  if (shuffle && playlist.length > 1) {
-    var n = currentIndex;
-    while (n === currentIndex) n = Math.floor(Math.random() * playlist.length);
-    currentIndex = n;
-  } else {
-    var nextIdx = currentIndex + 1;
-    if (nextIdx >= playlist.length) {
-      if (repeatMode === 'none') {
-        isPlaying = false;
-        updatePlayButton();
-        stopProgressTimer();
-        return;
-      }
-      nextIdx = 0;
-    }
-    currentIndex = nextIdx;
-  }
-  play(currentIndex);
-}
-
-function prev() {
-  if (!playlist.length) return;
-  if (currentIndex <= 0) currentIndex = playlist.length - 1;
-  else currentIndex--;
-  play(currentIndex);
-}
-
-/* ═══════════════════════════════════════════════
-   UI Helpers
-   ═══════════════════════════════════════════════ */
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function updateNowPlaying() {
-  var el = document.getElementById('nowPlaying');
-  var thumb = document.getElementById('playerBarThumb');
-  var eq = document.getElementById('playerBarEq');
-  if (currentIndex >= 0 && playlist[currentIndex]) {
-    if (el) el.innerText = playlist[currentIndex].title || 'YouTube Video';
-    updateMarquee();
-    if (thumb) {
-      thumb.style.backgroundImage = "url('" + thumbUrl(playlist[currentIndex].id) + "')";
-      thumb.classList.add('has-art');
-    }
-    if (eq) eq.classList.add('is-active');
-  } else {
-    if (el) el.innerText = 'Nothing playing';
-    if (thumb) {
-      thumb.style.backgroundImage = '';
-      thumb.classList.remove('has-art');
-    }
-    if (eq) eq.classList.remove('is-active');
-    setTimeDisplay(0, 0);
-  }
-}
-
-function updatePlayButton() {
-  var btn = document.getElementById('playBtn');
-  var eq = document.getElementById('playerBarEq');
-  if (eq) {
-    eq.classList.toggle('is-active', currentIndex >= 0);
-    eq.classList.toggle('eq-paused', currentIndex >= 0 && !isPlaying);
-    eq.classList.remove('is-playing');
-  }
-  if (!btn) return;
-  btn.innerText = isPlaying ? '⏸' : '▶';
-  btn.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
-}
-
-var isSeeking = false;
-
-function setProgress(ratio) {
-  if (isSeeking) return;
-  var fill = document.getElementById('progressFill');
-  var thumb = document.getElementById('progressThumb');
-  if (!fill) return;
-  var pct = Math.max(0, Math.min(1, ratio)) * 100;
-  fill.style.width = pct + '%';
-  if (thumb) thumb.style.left = pct + '%';
-}
-
-function formatTime(seconds) {
-  if (!isFinite(seconds) || seconds < 0) seconds = 0;
-  var m = Math.floor(seconds / 60);
-  var s = Math.floor(seconds % 60);
-  return m + ':' + (s < 10 ? '0' : '') + s;
-}
-
-function setTimeDisplay(current, duration) {
-  var el = document.getElementById('timeDisplay');
-  if (!el) return;
-  el.innerText = formatTime(current) + ' / ' + formatTime(duration);
-}
-
-function startProgressTimer() {
-  stopProgressTimer();
-  progressTimer = setInterval(function() {
-    if (!ytPlayer || !ytPlayer.getDuration) return;
-    try {
-      var d = ytPlayer.getDuration();
-      var t = ytPlayer.getCurrentTime();
-      if (d > 0) setProgress(t / d);
-      setTimeDisplay(t, d);
-    } catch (e) {}
-  }, 500);
-}
-
-function stopProgressTimer() {
-  if (progressTimer) {
-    clearInterval(progressTimer);
-    progressTimer = null;
-  }
-}
-
-/* ═══════════════════════════════════════════════
-   Progress Bar Seeking
-   ═══════════════════════════════════════════════ */
-(function initProgressSeeking() {
-  var bar = document.getElementById('progressBar');
-  if (!bar) return;
-
-  function seekToPosition(e) {
-    if (!ytPlayer || !ytPlayer.getDuration) return;
-    var rect = bar.getBoundingClientRect();
-    var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    var ratio = Math.max(0, Math.min(1, x / rect.width));
-    var fill = document.getElementById('progressFill');
-    var thumb = document.getElementById('progressThumb');
-    var pct = ratio * 100;
-    if (fill) fill.style.width = pct + '%';
-    if (thumb) thumb.style.left = pct + '%';
-    var d = ytPlayer.getDuration();
-    if (d > 0) setTimeDisplay(ratio * d, d);
-    return ratio;
-  }
-
-  function onDown(e) {
-    if (!ytPlayer || !ytPlayer.getDuration) return;
-    e.preventDefault();
-    isSeeking = true;
-    bar.classList.add('is-seeking');
-    seekToPosition(e);
-    if (e.type === 'mousedown') {
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
-    } else {
-      document.addEventListener('touchmove', onMove, { passive: false });
-      document.addEventListener('touchend', onUp);
-    }
-  }
-
-  function onMove(e) {
-    e.preventDefault();
-    seekToPosition(e);
-  }
-
-  function onUp(e) {
-    var ratio = seekToPosition(e.changedTouches ? e.changedTouches[0] : e);
-    isSeeking = false;
-    bar.classList.remove('is-seeking');
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    document.removeEventListener('touchmove', onMove);
-    document.removeEventListener('touchend', onUp);
-    if (ytPlayer && ytPlayer.getDuration) {
-      var d = ytPlayer.getDuration();
-      if (d > 0) ytPlayer.seekTo(ratio * d, true);
-    }
-  }
-
-  bar.addEventListener('mousedown', onDown);
-  bar.addEventListener('touchstart', onDown, { passive: false });
-})();
-
-/* ═══════════════════════════════════════════════
-   Render Playlist
-   ═══════════════════════════════════════════════ */
-function render() {
-  var div = document.getElementById('playlist');
-  div.innerHTML = '';
-
-  if (!playlist.length) {
-    div.innerHTML = '<div class="empty-state">No songs yet. Your teacher has not added any songs to this playlist.</div>';
-    return;
-  }
-
-  playlist.forEach(function(song, i) {
-    var item = document.createElement('div');
-    item.className = 'song-row' + (i === currentIndex ? ' is-playing' : '');
-    item.setAttribute('role', 'button');
-    item.setAttribute('tabindex', '0');
-
-    var showRemove = teacherMode && !focusMode;
-
-    item.innerHTML =
-      '<div class="song-row-thumb">' +
-        '<img src="' + thumbUrl(song.id) + '" alt="" loading="lazy">' +
-        '<span class="song-row-indicator" aria-hidden="true">' +
-          (i === currentIndex ? '<span class="eq"><i></i><i></i><i></i></span>' : '▶') +
-        '</span>' +
-      '</div>' +
-      '<div class="song-row-info">' +
-        '<div class="song-row-title">' + escapeHtml(song.title) + '</div>' +
-        (i === currentIndex ? '<div class="song-row-status">Now playing</div><div class="song-row-wave"><i></i><i></i><i></i><i></i></div>' : '') +
-      '</div>' +
-      (showRemove ? '<button class="song-row-remove" aria-label="Remove" data-index="' + i + '">✕</button>' : '');
-
-    item.addEventListener('click', function(e) {
-      if (e.target.closest('.song-row-remove')) return;
-      if (e.target.closest('.song-row-checkbox')) return;
-      play(i);
-    });
-    item.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        play(i);
-      }
-    });
-
-    var removeBtn = item.querySelector('.song-row-remove');
-    if (removeBtn) {
-      removeBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        if (teacherMode) {
-          deleteSong(i);
-          return;
-        }
-        var entered = window.prompt('Enter password to remove this song:');
-        if (entered === null) return;
-        if (entered !== getPassword()) {
-          window.alert('Incorrect password.');
-          return;
-        }
-        deleteSong(i);
-      });
-    }
-
-    if (teacherMode) {
-      var cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.className = 'song-row-checkbox';
-      cb.checked = selectedSongs.has(i);
-      cb.addEventListener('click', function(ev) { ev.stopPropagation(); });
-      cb.addEventListener('change', function() {
-        if (cb.checked) selectedSongs.add(i);
-        else selectedSongs.delete(i);
-      });
-      item.insertBefore(cb, item.firstChild);
-      item.classList.add('has-checkbox');
-    }
-    div.appendChild(item);
-  });
-}
-
-/* ═══════════════════════════════════════════════
-   Teacher Tools
-   ═══════════════════════════════════════════════ */
-function unlockTeacher() {
-  if (teacherMode) {
-    // Lock
-    teacherMode = false;
-    sessionStorage.setItem('pvs_teacher_' + classParam, 'false');
-    selectedSongs.clear();
-    applyTeacherUI();
-    updatePauseUI();
-    render();
-    return;
-  }
-  // Unlock
-  var pwd = window.prompt('Enter teacher password:');
-  if (pwd === null) return;
-  if (pwd !== getPassword() && pwd !== MASTER_PASSWORD) {
-    window.alert('Incorrect password.');
-    return;
-  }
-  teacherMode = true;
-  sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
-  applyTeacherUI();
-  updatePasteButton();
-  updatePauseUI();
-  render();
-}
-
-async function deleteSelected() {
-  if (selectedSongs.size === 0) { alert('No songs selected.'); return; }
-  if (!confirm('Delete ' + selectedSongs.size + ' selected song(s)?')) return;
-  // Delete highest index first so lower indexes don't shift
-  var indexes = Array.from(selectedSongs).sort(function(a,b){ return b - a; });
-  selectedSongs.clear();
-  // Stop poll while we delete
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-  for (var i = 0; i < indexes.length; i++) {
-    var idx = indexes[i];
-    var song = playlist[idx];
-    if (song && song.id) {
-      recentlyDeletedIds.add(song.id);
-      setTimeout((function(id){ return function(){ recentlyDeletedIds.delete(id); }; })(song.id), 30000);
-      if (song.id) banSong(song.id);
-    }
-    playlist.splice(idx, 1);
-    if (idx === currentIndex) {
-      currentIndex = -1; isPlaying = false;
-      try { ytPlayer && ytPlayer.stopVideo(); } catch(e){}
-      stopProgressTimer(); setProgress(0);
-    } else if (idx < currentIndex) {
-      currentIndex--;
-    }
-  }
-  render(); updateNowPlaying(); updatePlayButton();
-  // Single PUT with the fully updated playlist
-  try {
-    var snap = JSON.stringify(playlist);
-    lastSavedSnapshot = snap;
-    await fetch(apiUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: snap
-    });
-  } catch(e) {}
-  startPolling();
-}
-
-function selectAll() {
-  selectedSongs.clear();
-  playlist.forEach(function(_, i) { selectedSongs.add(i); });
-  render();
-}
-
-function deselectAll() {
-  selectedSongs.clear();
-  render();
-}
-
-function copySelected() {
-  if (selectedSongs.size === 0) {
-    alert('No songs selected. Use the checkboxes to select songs first.');
-    return;
-  }
-  var songs = [];
-  selectedSongs.forEach(function(i) {
-    if (playlist[i]) songs.push({ id: playlist[i].id, title: playlist[i].title });
-  });
-  localStorage.setItem('pvs_clipboard', JSON.stringify(songs));
-  alert('Copied ' + songs.length + ' song(s). Go to another class and click Paste to add them.');
-  updatePasteButton();
-}
-
-function updatePasteButton() {
-  var btn = document.getElementById('pasteBtn');
-  if (!btn) return;
-  var clip = localStorage.getItem('pvs_clipboard');
-  var songs = [];
-  try { songs = JSON.parse(clip); } catch (e) {}
-  if (Array.isArray(songs) && songs.length > 0) {
-    btn.innerText = 'Paste ' + songs.length + ' Song(s)';
-    btn.disabled = false;
-  } else {
-    btn.innerText = 'Paste Songs';
-    btn.disabled = true;
-  }
-}
-
-function pasteSongs() {
-  var clip = localStorage.getItem('pvs_clipboard');
-  var songs = [];
-  try { songs = JSON.parse(clip); } catch (e) {}
-  if (!Array.isArray(songs) || songs.length === 0) {
-    alert('No songs in clipboard. Copy songs from another class first.');
-    return;
-  }
-  var existingIds = new Set(playlist.map(function(s) { return s.id; }));
-  var added = 0;
-  for (var j = 0; j < songs.length; j++) {
-    var song = songs[j];
-    if (song && song.id && !existingIds.has(song.id)) {
-      playlist.push({ id: song.id, title: song.title || 'YouTube Video' });
-      existingIds.add(song.id);
-      added++;
-    }
-  }
-  if (added > 0) {
-    save();
-    render();
-    var dupes = songs.length - added;
-    alert('Pasted ' + added + ' new song(s).' + (dupes > 0 ? ' ' + dupes + ' duplicate(s) skipped.' : ''));
-  } else {
-    alert('All songs already exist in this playlist.');
-  }
-}
-
-/* ═══════════════════════════════════════════════
-   Pause System
-   ═══════════════════════════════════════════════ */
-
-// Called from the "I'm the teacher" button on the pause overlay.
-// Lets a teacher on a fresh tab/device authenticate and immediately dismiss the overlay.
-function unlockFromOverlay() {
-  var pwd = window.prompt('Enter teacher password to dismiss:');
-  if (pwd === null) return;
-  if (pwd !== getPassword() && pwd !== MASTER_PASSWORD) {
-    window.alert('Incorrect password.');
-    return;
-  }
-  // Activate teacher mode so the overlay stays hidden
-  teacherMode = true;
-  sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
-  applyTeacherUI();
-  updatePasteButton();
-  updatePauseUI(); // this will now hide the overlay because teacherMode === true
-}
-
-async function togglePauseAll() {
-  var newState = !classPaused;
-  try {
-    var payload = { paused: newState };
-    if (!newState) payload.locked = false;
-    var res = await fetch(pauseApiUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      var data = await res.json();
-      classPaused = data.paused;
-      classLocked = !!data.locked;
-      updatePauseUI();
-    }
-  } catch (e) {}
-}
-
-async function toggleLockAll() {
-  var newLocked = !classLocked;
-  try {
-    var payload = { locked: newLocked };
-    if (newLocked) payload.paused = true;
-    var res = await fetch(pauseApiUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      var data = await res.json();
-      classPaused = !!data.paused;
-      classLocked = !!data.locked;
-      updatePauseUI();
-    }
-  } catch (e) {}
-}
-
-function updatePauseUI() {
-  var btn = document.getElementById('pauseAllBtn');
-  var lockBtn = document.getElementById('lockAllBtn');
-  var overlay = document.getElementById('pauseOverlay');
-  var overlayIcon = document.getElementById('pauseOverlayIcon');
-  var overlayTitle = document.getElementById('pauseOverlayTitle');
-  var overlayText = document.getElementById('pauseOverlayText');
-
-  if (btn) {
-    btn.innerText = classPaused ? 'Resume All' : 'Pause All';
-    if (classPaused) {
-      btn.classList.remove('btn-danger');
-      btn.classList.add('btn-gold');
-    } else {
-      btn.classList.add('btn-danger');
-      btn.classList.remove('btn-gold');
-    }
-  }
-  if (lockBtn) {
-    if (classLocked) {
-      lockBtn.innerText = '🔓 Unlock Playback';
-      lockBtn.classList.remove('btn-outline');
-      lockBtn.classList.add('btn-danger');
-    } else {
-      lockBtn.innerText = '🔒 Lock Playback';
-      lockBtn.classList.remove('btn-danger');
-      lockBtn.classList.add('btn-outline');
-    }
-  }
-  if (overlay) overlay.style.display = 'none'; // hide first, then show only for students
-
-  if (classPaused || classLocked) {
-    if (ytPlayer && isPlaying && !teacherMode) {
-      try { ytPlayer.pauseVideo(); } catch (e) {}
-    }
-    if (overlay && !teacherMode) {
-      if (classLocked) {
-        if (overlayIcon) overlayIcon.textContent = '🔒';
-        if (overlayTitle) overlayTitle.textContent = 'Playback Locked';
-        if (overlayText) overlayText.textContent = 'Your teacher has locked playback for this class. Please wait until it is unlocked.';
-      } else {
-        if (overlayIcon) overlayIcon.textContent = '||';
-        if (overlayTitle) overlayTitle.textContent = 'Playback Paused';
-        if (overlayText) overlayText.textContent = 'Your teacher has paused playback for this class.';
-      }
-      overlay.style.display = '';
-    }
-  }
-
-  updatePlayerBarLock();
-}
-
-function updatePlayerBarLock() {
-  var locked = classLocked && !teacherMode;
-  var ids = ['playBtn', 'prevBtn', 'nextBtn', 'repeatBtn'];
-  for (var i = 0; i < ids.length; i++) {
-    var el = document.getElementById(ids[i]);
-    if (el) {
-      el.disabled = locked;
-      el.style.opacity = locked ? '0.4' : '';
-      el.style.pointerEvents = locked ? 'none' : '';
-    }
-  }
-}
-
-async function pollPauseState() {
-  try {
-    var res = await fetch(pauseApiUrl, { cache: 'no-store' });
-    if (res.ok) {
-      var data = await res.json();
-      var wasPaused = classPaused;
-      var wasLocked = classLocked;
-      classPaused = !!data.paused;
-      classLocked = !!data.locked;
-      if (classPaused !== wasPaused || classLocked !== wasLocked) {
-        updatePauseUI();
-      }
-      if ((classPaused || classLocked) && !teacherMode && isPlaying && ytPlayer) {
-        try { ytPlayer.pauseVideo(); } catch (e) {}
-      }
-    }
-  } catch (e) {}
-}
-
-/* ═══════════════════════════════════════════════
-   Keyboard Shortcuts
-   ═══════════════════════════════════════════════ */
-document.addEventListener('keydown', function(e) {
-  var target = e.target;
-  var tag = target && target.tagName;
-  var typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (target && target.isContentEditable);
-  if (typing) return;
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-
-  if (e.code === 'Space' || e.key === ' ') {
-    e.preventDefault();
-    if ((classPaused || classLocked) && !teacherMode) return;
-    togglePlay();
-  } else if (e.key === 'ArrowRight') {
-    e.preventDefault();
-    if ((classPaused || classLocked) && !teacherMode) return;
-    next();
-  } else if (e.key === 'ArrowLeft') {
-    e.preventDefault();
-    if ((classPaused || classLocked) && !teacherMode) return;
-    prev();
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    var newVol = Math.min(100, currentVolume + 10);
-    document.getElementById('volumeSlider').value = newVol;
-    setVolume(newVol);
-  } else if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    var newVol2 = Math.max(0, currentVolume - 10);
-    document.getElementById('volumeSlider').value = newVol2;
-    setVolume(newVol2);
-  }
-});
-
-document.getElementById('linkInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    addSong();
-  }
-});
-
-/* ═══════════════════════════════════════════════
-   Analytics
-   ═══════════════════════════════════════════════ */
-function trackSongPlay(song) {
-  if (!song || !song.id) return;
-  fetch('/api/analytics', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ class: classParam, songId: song.id, songTitle: song.title || 'YouTube Video' })
-  }).catch(function(){});
-}
-
-var analyticsTimer = null;
-
-function startAnalyticsPolling() {
-  if (analyticsTimer) clearInterval(analyticsTimer);
-  loadAllAnalytics();
-  analyticsTimer = setInterval(loadAllAnalytics, 10000);
-}
-
-function stopAnalyticsPolling() {
-  if (analyticsTimer) { clearInterval(analyticsTimer); analyticsTimer = null; }
-}
-
-async function loadAllAnalytics() {
-  var container = document.getElementById('analyticsContent');
-  if (!container) return;
-  try {
-    var promises = ALL_CLASSES.map(function(cls) {
-      return fetch('/api/analytics?class=' + encodeURIComponent(cls), { cache: 'no-store' })
-        .then(function(r) { return r.ok ? r.json() : []; })
-        .catch(function() { return []; });
-    });
-    var results = await Promise.all(promises);
-    renderAnalytics(results);
-  } catch(e) {
-    container.innerHTML = '<p style="color:var(--text-muted);">Could not load analytics.</p>';
-  }
-}
-
-function renderAnalytics(results) {
-  var container = document.getElementById('analyticsContent');
-  if (!container) return;
-
-  var html = '';
-  for (var i = 0; i < ALL_CLASSES.length; i++) {
-    var cls = ALL_CLASSES[i];
-    var songs = results[i] || [];
-    var displayName = cls === 'PE' ? 'PE Class' : cls.charAt(0).toUpperCase() + cls.slice(1);
-    var totalPlays = 0;
-    for (var s = 0; s < songs.length; s++) totalPlays += (songs[s].playCount || songs[s].play_count || 0);
-
-    html += '<div class="analytics-class">';
-    html += '<div class="analytics-class-header" onclick="toggleAnalyticsClass(this)">';
-    html += '<span class="analytics-class-name">' + displayName + '</span>';
-    html += '<span class="analytics-class-stats">' + songs.length + ' song' + (songs.length !== 1 ? 's' : '') + ' &middot; ' + totalPlays + ' total play' + (totalPlays !== 1 ? 's' : '') + '</span>';
-    html += '<span class="analytics-chevron">&#9654;</span>';
-    html += '</div>';
-    html += '<div class="analytics-class-body" style="display:none;">';
-    if (songs.length === 0) {
-      html += '<div class="analytics-empty">No songs played yet</div>';
-    } else {
-      html += '<table class="analytics-table"><thead><tr><th>Song</th><th>Plays</th></tr></thead><tbody>';
-      for (var j = 0; j < songs.length; j++) {
-        var song = songs[j];
-        var count = song.playCount || song.play_count || 0;
-        var title = song.songTitle || song.song_title || 'Unknown';
-        if (title.length > 50) title = title.substring(0, 47) + '...';
-        html += '<tr><td>' + escapeHtml(title) + '</td><td class="analytics-count">' + count + '</td></tr>';
-      }
-      html += '</tbody></table>';
-    }
-    html += '</div></div>';
-  }
-  container.innerHTML = html;
-}
-
-
-function toggleAnalyticsClass(header) {
-  var body = header.nextElementSibling;
-  var chevron = header.querySelector('.analytics-chevron');
-  if (body.style.display === 'none') {
-    body.style.display = '';
-    chevron.classList.add('open');
-  } else {
-    body.style.display = 'none';
-    chevron.classList.remove('open');
-  }
-}
-
-/* ═══════════════════════════════════════════════
-   Schedule Play — auto-start/stop at set times
-   ═══════════════════════════════════════════════ */
-var scheduleActive = false;
-var scheduleTimer = null;
-var scheduleStartTime = null; // "HH:MM"
-var scheduleEndTime = null;
-
-function toggleSchedule() {
-  if (scheduleActive) {
-    clearSchedule();
-    return;
-  }
-  var startVal = document.getElementById('scheduleStart').value;
-  var endVal = document.getElementById('scheduleEnd').value;
-  if (!startVal || !endVal) {
-    alert('Please set both a start and end time.');
-    return;
-  }
-  scheduleStartTime = startVal;
-  scheduleEndTime = endVal;
-  scheduleActive = true;
-  document.getElementById('scheduleBtn').innerText = 'Clear Schedule';
-  document.getElementById('scheduleBtn').classList.add('btn-gold');
-  document.getElementById('scheduleBtn').classList.remove('btn-outline');
-  updateScheduleStatus();
-  scheduleTimer = setInterval(tickSchedule, 10000);
-  tickSchedule();
-}
-
-function clearSchedule() {
-  scheduleActive = false;
-  scheduleStartTime = null;
-  scheduleEndTime = null;
-  if (scheduleTimer) { clearInterval(scheduleTimer); scheduleTimer = null; }
-  var btn = document.getElementById('scheduleBtn');
-  if (btn) { btn.innerText = 'Set Schedule'; btn.classList.remove('btn-gold'); btn.classList.add('btn-outline'); }
-  var status = document.getElementById('scheduleStatus');
-  if (status) status.innerText = '';
-}
-
-function timeToMins(hhmm) {
-  var parts = hhmm.split(':');
-  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-}
-
-function tickSchedule() {
-  if (!scheduleActive) return;
-  var now = new Date();
-  var curMins = now.getHours() * 60 + now.getMinutes();
-  var startMins = timeToMins(scheduleStartTime);
-  var endMins = timeToMins(scheduleEndTime);
-  var inWindow = startMins <= endMins
-    ? (curMins >= startMins && curMins < endMins)
-    : (curMins >= startMins || curMins < endMins); // overnight
-
-  if (inWindow) {
-    if (!isPlaying && playlist.length > 0) {
-      if (currentIndex < 0) play(0);
-      else { try { ytPlayer && ytPlayer.playVideo(); isPlaying = true; updatePlayButton(); } catch(e){} }
-    }
-  } else {
-    if (isPlaying) {
-      try { ytPlayer && ytPlayer.pauseVideo(); } catch(e){}
-    }
-  }
-  updateScheduleStatus();
-}
-
-function updateScheduleStatus() {
-  var el = document.getElementById('scheduleStatus');
-  if (!el || !scheduleActive) return;
-  var now = new Date();
-  var curMins = now.getHours() * 60 + now.getMinutes();
-  var startMins = timeToMins(scheduleStartTime);
-  var endMins = timeToMins(scheduleEndTime);
-  var inWindow = startMins <= endMins
-    ? (curMins >= startMins && curMins < endMins)
-    : (curMins >= startMins || curMins < endMins);
-  el.innerText = inWindow ? '▶ Playing' : '⏸ Waiting…';
-  el.style.color = inWindow ? 'var(--gold)' : 'var(--text-muted)';
-}
-
-/* ═══════════════════════════════════════════════
-   Auto Volume Normalisation
-   Smoothly adjusts playback volume when a new track starts
-   so very quiet or very loud videos stay comfortable.
-   ═══════════════════════════════════════════════ */
-var TARGET_VOLUME = 80;   // ideal playback level
-var NORM_TOLERANCE = 12;  // don't nudge if already within this range
-var normTimer = null;
-
-function startNormalisation() {
-  // Wait 3 s after song starts (buffering / ads settle) then sample and adjust
-  if (normTimer) clearTimeout(normTimer);
-  normTimer = setTimeout(function() {
-    if (!ytPlayer || !ytPlayer.getVolume) return;
-    try {
-      // YouTube volume is 0-100. We use the player's own volume as a proxy for
-      // "where the user had it" and nudge toward TARGET_VOLUME if far off.
-      var cur = ytPlayer.getVolume();
-      if (Math.abs(cur - TARGET_VOLUME) > NORM_TOLERANCE) {
-        var steps = 20;
-        var delta = (TARGET_VOLUME - cur) / steps;
-        var step = 0;
-        var ramp = setInterval(function() {
-          if (!ytPlayer || step >= steps) { clearInterval(ramp); return; }
-          cur += delta;
-          var v = Math.round(Math.max(0, Math.min(100, cur)));
-          try { ytPlayer.setVolume(v); } catch(e){}
-          step++;
-          if (step >= steps) {
-            clearInterval(ramp);
-            currentVolume = TARGET_VOLUME;
-            var slider = document.getElementById('volumeSlider');
-            if (slider) slider.value = TARGET_VOLUME;
-            localStorage.setItem('pvs_volume', TARGET_VOLUME);
-            updateVolumeIcon();
-          }
-        }, 80);
-      }
-    } catch(e) {}
-  }, 3000);
-}
-
-/* ═══════════════════════════════════════════════
-   Marquee — scroll long titles in the player bar
-   ═══════════════════════════════════════════════ */
-function updateMarquee() {
-  var wrap = document.getElementById('titleScrollWrap');
-  var el = document.getElementById('nowPlaying');
-  if (!wrap || !el) return;
-  el.style.animation = 'none';
-  el.style.transform = 'translateX(0)';
-  requestAnimationFrame(function() {
-    var textW = el.scrollWidth;
-    var wrapW = wrap.offsetWidth;
-    if (textW > wrapW + 4) {
-      var overflow = textW - wrapW;
-      var duration = Math.max(4, overflow / 40); // ~40px/s
-      wrap.style.setProperty('--marquee-offset', '-' + overflow + 'px');
-      el.style.animation = 'marquee-scroll ' + duration + 's linear 1.5s infinite alternate';
-    } else {
-      wrap.style.removeProperty('--marquee-offset');
-      el.style.animation = 'none';
-    }
-  });
-}
-
-/* ═══════════════════════════════════════════════
-   Song Request System
-   ═══════════════════════════════════════════════ */
-var requestApiUrl = '/api/requests/' + encodeURIComponent(classParam);
-var requestCooldownMs = 30000;
-var lastRequestTime = 0;
-var requestPollTimer = null;
-
-async function submitRequest() {
-  var input = document.getElementById('requestInput');
-  var feedback = document.getElementById('requestFeedback');
-  var text = (input.value || '').trim();
-  if (!text) { showRequestFeedback('Please type a song name first.', 'error'); return; }
-
-  var now = Date.now();
-  var wait = requestCooldownMs - (now - lastRequestTime);
-  if (wait > 0) {
-    showRequestFeedback('Please wait ' + Math.ceil(wait/1000) + 's before requesting again.', 'error');
-    return;
-  }
-
-  lastRequestTime = now;
-  input.value = '';
-  input.disabled = true;
-
-  try {
-    var existing = await fetchRequests();
-    if (existing.some(function(r) { return r.text.toLowerCase() === text.toLowerCase(); })) {
-      showRequestFeedback('✅ That song has already been requested!', 'info');
-      input.disabled = false; return;
-    }
-    var req = { id: Date.now(), text: text, ts: new Date().toISOString(), done: false };
-    existing.push(req);
-    await fetch(requestApiUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(existing)
-    });
-    showRequestFeedback('✅ Request sent! Your teacher will see it shortly.', 'success');
-    renderRequestQueue();
-  } catch(e) {
-    showRequestFeedback('⚠️ Could not send request — check your connection.', 'error');
-  }
-  input.disabled = false;
-}
-
-function showRequestFeedback(msg, type) {
-  var el = document.getElementById('requestFeedback');
-  if (!el) return;
-  el.textContent = msg;
-  el.className = 'request-feedback request-feedback-' + type;
-  clearTimeout(el._t);
-  el._t = setTimeout(function() { el.textContent = ''; el.className = 'request-feedback'; }, 5000);
-}
-
-async function fetchRequests() {
-  try {
-    var res = await fetch(requestApiUrl, { cache: 'no-store' });
-    if (!res.ok) return [];
-    var data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch(e) { return []; }
-}
-
-async function renderRequestQueue() {
-  var panel = document.getElementById('requestQueuePanel');
-  var list = document.getElementById('requestQueue');
-  if (!panel || !list) return;
-  if (!teacherMode) { panel.style.display = 'none'; return; }
-  var reqs = await fetchRequests();
-  var pending = reqs.filter(function(r) { return !r.done; });
-  panel.style.display = '';
-  if (pending.length === 0) {
-    list.innerHTML = '<div class="request-empty">No pending requests — students can submit from this page.</div>';
-    return;
-  }
-  list.innerHTML = pending.map(function(r) {
-    return '<div class="request-row" data-id="' + r.id + '">' +
-      '<div class="request-row-text">' +
-        '<span class="request-row-song">' + escapeHtml(r.text) + '</span>' +
-        '<span class="request-row-time">' + formatRequestTime(r.ts) + '</span>' +
-      '</div>' +
-      '<div class="request-row-actions">' +
-        '<button class="btn btn-sm btn-gold" onclick="approveRequest(' + r.id + ','' + escapeHtml(r.text).replace(/'/g,"\u0027") + '')">Add to Playlist</button>' +
-        '<button class="btn btn-sm btn-danger" onclick="dismissRequest(' + r.id + ')">Dismiss</button>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
-function formatRequestTime(iso) {
-  try {
-    var d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } catch(e) { return ''; }
-}
-
-async function approveRequest(id, songText) {
-  // Search YouTube for the song name and add top result
-  var feedback = 'Searching for: ' + songText + '…';
-  if (!confirm('Add "' + songText + '" to the playlist?
-
-This will search YouTube for the best match.')) return;
-  try {
-    // Use YouTube oEmbed search via noembed as proxy
-    var searchRes = await fetch('https://www.youtube.com/results?search_query=' + encodeURIComponent(songText));
-    // We can't scrape YouTube directly — instead open YouTube search for the teacher
-    window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(songText), '_blank');
-    await dismissRequest(id);
-    showRequestFeedback('YouTube opened in a new tab — copy the link and paste it above to add the song.', 'info');
-  } catch(e) {}
-}
-
-async function dismissRequest(id) {
-  var reqs = await fetchRequests();
-  reqs = reqs.map(function(r) { return r.id === id ? Object.assign({}, r, { done: true }) : r; });
-  await fetch(requestApiUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(reqs)
-  });
-  renderRequestQueue();
-}
-
-async function clearAllRequests() {
-  if (!confirm('Clear all song requests?')) return;
-  await fetch(requestApiUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify([])
-  });
-  renderRequestQueue();
-}
-
-function startRequestPolling() {
-  if (requestPollTimer) clearInterval(requestPollTimer);
-  requestPollTimer = setInterval(function() {
-    if (teacherMode) renderRequestQueue();
-  }, 10000);
-}
-
-/* ═══════════════════════════════════════════════
-   Offline Resilience
-   ═══════════════════════════════════════════════ */
-var isOffline = false;
-var offlineRetryTimer = null;
-
-function initOfflineDetection() {
-  window.addEventListener('online',  handleOnline);
-  window.addEventListener('offline', handleOffline);
-  if (!navigator.onLine) handleOffline();
-}
-
-function handleOffline() {
-  if (isOffline) return;
-  isOffline = true;
-  var banner = document.getElementById('offlineBanner');
-  var text = document.getElementById('offlineBannerText');
-  if (banner) {
-    if (text) text.textContent = isPlaying
-      ? 'No internet — music will keep playing until this song ends'
-      : 'No internet connection — reconnecting…';
-    banner.style.display = '';
-    banner.classList.add('offline-banner-visible');
-  }
-  // Keep playing current song — YouTube player buffers ahead
-  // Pause all polling to avoid error spam
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-  // Schedule retry
-  offlineRetryTimer = setInterval(function() {
-    fetch('/api/playlist/' + encodeURIComponent(classParam), { cache: 'no-store', signal: AbortSignal.timeout(3000) })
-      .then(function() { handleOnline(); })
-      .catch(function() {});
-  }, 8000);
-}
-
-function handleOnline() {
-  if (!isOffline) return;
-  isOffline = false;
-  if (offlineRetryTimer) { clearInterval(offlineRetryTimer); offlineRetryTimer = null; }
-  var banner = document.getElementById('offlineBanner');
-  var text = document.getElementById('offlineBannerText');
-  if (banner) {
-    if (text) text.textContent = 'Back online — syncing…';
-    banner.classList.add('offline-banner-back');
-    setTimeout(function() {
-      banner.style.display = 'none';
-      banner.classList.remove('offline-banner-visible', 'offline-banner-back');
-    }, 2500);
-  }
-  // Resume polling
-  startPolling();
-  pollPauseState();
-}
-
-/* ═══════════════════════════════════════════════
-   Most Played
-   ═══════════════════════════════════════════════ */
-async function renderMostPlayed() {
-  var panel = document.getElementById('mostPlayedPanel');
-  var list = document.getElementById('mostPlayedList');
-  if (!panel || !list) return;
-  try {
-    var res = await fetch('/api/analytics/' + encodeURIComponent(classParam), { cache: 'no-store' });
-    if (!res.ok) { panel.style.display = 'none'; return; }
-    var data = await res.json();
-    var songs = Array.isArray(data) ? data : (data.songs || []);
-    var byId = {};
-    playlist.forEach(function(s) { byId[s.id] = s; });
-    songs = songs.filter(function(s) { return s.count > 0; })
-                 .sort(function(a,b) { return b.count - a.count; })
-                 .slice(0, 5);
-    if (songs.length === 0) { panel.style.display = 'none'; return; }
-    panel.style.display = '';
-    var medals = ['🥇','🥈','🥉','⭐','⭐'];
-    list.innerHTML = songs.map(function(s, i) {
-      var thumb = 'https://img.youtube.com/vi/' + s.id + '/mqdefault.jpg';
-      var title = (byId[s.id] && byId[s.id].title) || s.title || 'Unknown';
-      var pct = songs[0].count > 0 ? Math.round((s.count / songs[0].count) * 100) : 0;
-      return '<div class="most-played-row" onclick="playById(\'' + s.id + '\')">' +
-        '<span class="most-played-medal">' + medals[i] + '</span>' +
-        '<img class="most-played-thumb" src="' + thumb + '" alt="">' +
-        '<div class="most-played-info">' +
-          '<div class="most-played-title">' + escapeHtml(title) + '</div>' +
-          '<div class="most-played-bar"><div class="most-played-fill" style="width:' + pct + '%"></div></div>' +
-        '</div>' +
-        '<span class="most-played-count">' + s.count + '<small>plays</small></span>' +
-      '</div>';
-    }).join('');
-  } catch(e) { panel.style.display = 'none'; }
-}
-
-function playById(id) {
-  var idx = playlist.findIndex(function(s) { return s.id === id; });
-  if (idx !== -1) play(idx);
-}
-
-/* ═══════════════════════════════════════════════
-   Initialization
-   ═══════════════════════════════════════════════ */
-/* Single source of truth for all teacher UI state */
-function applyTeacherUI() {
-  var addPanel     = document.getElementById('addSongPanel');
-  var teacherPanel = document.getElementById('teacherPanel');
-  var unlockBtn    = document.getElementById('teacherUnlockBtn');
-  var rqPanel      = document.getElementById('requestQueuePanel');
-
-  if (teacherMode) {
-    if (addPanel)     addPanel.style.display     = '';
-    if (teacherPanel) teacherPanel.style.display = '';
-    if (unlockBtn) {
-      unlockBtn.innerText = 'Lock Tools';
-      unlockBtn.classList.add('btn-gold');
-      unlockBtn.classList.remove('btn-outline');
-    }
-    if (rqPanel) renderRequestQueue();
-  } else {
-    if (addPanel)     addPanel.style.display     = 'none';
-    if (teacherPanel) teacherPanel.style.display = 'none';
-    if (unlockBtn) {
-      unlockBtn.innerText = 'Teacher Tools';
-      unlockBtn.classList.remove('btn-gold');
-      unlockBtn.classList.add('btn-outline');
-    }
-    if (rqPanel) rqPanel.style.display = 'none';
-  }
-}
-
+// ── Init ─────────────────────────────────────────────
 async function init() {
-  updateThemeButton();
-  initVolume();
-  updateRepeatButton();
-  renderRecentlyPlayed();
-  setupTitleTripleClick();
+  // Theme button
+  document.getElementById('themeToggle').textContent = getTheme() === 'dark' ? '\u2600\ufe0f' : '\ud83c\udf19';
+
+  // Volume
+  var slider = document.getElementById('volumeSlider');
+  if (slider) slider.value = currentVolume;
+  updateVolumeIcon();
+
+  // Repeat
+  updateRepeatBtn();
+
+  // Apply modes
   applyModes();
+
+  // Teacher UI
   applyTeacherUI();
 
-  try {
-    playlist = await fetchRemotePlaylist();
-    lastSavedSnapshot = JSON.stringify(playlist);
-  } catch (e) {
-    playlist = [];
+  // Title triple-click to open admin
+  var titleEl = document.getElementById('classTitle');
+  if (titleEl) {
+    var clicks = 0; var clickTimer = null;
+    titleEl.addEventListener('click', function() {
+      clicks++;
+      if (clickTimer) clearTimeout(clickTimer);
+      if (clicks >= 3) { clicks = 0; openAdmin(); }
+      clickTimer = setTimeout(function(){ clicks = 0; }, 600);
+    });
   }
 
-  var pendingKey = 'pvs_pending_' + classParam;
-  try {
-    var pendingSnap = localStorage.getItem(pendingKey);
-    if (pendingSnap) {
-      var pendingList = JSON.parse(pendingSnap);
-      if (Array.isArray(pendingList) && pendingList.length > 0) {
-        var serverIds = new Set(playlist.map(function(s) { return s.id; }));
-        var recovered = false;
-        for (var p = 0; p < pendingList.length; p++) {
-          if (pendingList[p] && pendingList[p].id && !serverIds.has(pendingList[p].id)) {
-            playlist.push(pendingList[p]);
-            recovered = true;
-          }
-        }
-        if (recovered) {
-          save();
-        } else {
-          localStorage.removeItem(pendingKey);
-        }
-      } else {
-        localStorage.removeItem(pendingKey);
-      }
-    }
-  } catch (e) {
-    try { localStorage.removeItem(pendingKey); } catch(e2) {}
-  }
+  // Load playlist from server
+  playlist = await loadPlaylist();
+  lastSnap = JSON.stringify(playlist);
+
+  // Render
   render();
   updateNowPlaying();
-  updatePlayButton();
+  updatePlayBtn();
+  updatePasteBtn();
+  renderRecent();
+
+  // Backfill any missing titles
   backfillTitles();
+
+  // Load banned songs
   loadBanned();
-  setInterval(loadBanned, 15000); // re-poll ban list so deleted songs vanish everywhere
+  setInterval(loadBanned, 15000);
+
+  // Start polling
   startPolling();
-  pollPauseState();
+
+  // Pause state polling
+  pollPause();
+  setInterval(pollPause, 3000);
+
+  // Most played
   renderMostPlayed();
   setInterval(renderMostPlayed, 30000);
-  startRequestPolling();
-  initOfflineDetection();
-  setInterval(pollPauseState, 3000);
+
+  // Request queue poll (teacher only)
+  setInterval(function(){ if(teacherMode) renderRequestQueue(); }, 10000);
+
+  // Offline detection
+  initOffline();
 }
 
 init();
