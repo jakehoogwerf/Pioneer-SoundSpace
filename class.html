@@ -625,30 +625,13 @@ function adminRemoveDupes() {
 
 function toggleAdminTeacher() {
   var checked = document.getElementById('adminTeacherToggle').checked;
-  if (checked && !teacherMode) {
-    teacherMode = true;
-    sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
-    document.getElementById('teacherPanel').style.display = '';
-    document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
-    document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
-    document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
-    updatePasteButton();
-    updatePauseUI();
-    render();
-  } else if (!checked && teacherMode) {
-    teacherMode = false;
-    sessionStorage.setItem('pvs_teacher_' + classParam, 'false');
-    selectedSongs.clear();
-    document.getElementById('teacherPanel').style.display = 'none';
-    document.getElementById('addSongPanel').style.display = 'none';
-    var rqp2 = document.getElementById('requestQueuePanel');
-    if (rqp2) rqp2.style.display = 'none';
-    document.getElementById('teacherUnlockBtn').innerText = 'Teacher Tools';
-    document.getElementById('teacherUnlockBtn').classList.remove('btn-gold');
-    document.getElementById('teacherUnlockBtn').classList.add('btn-outline');
-    updatePauseUI();
-    render();
-  }
+  teacherMode = checked;
+  sessionStorage.setItem('pvs_teacher_' + classParam, checked ? 'true' : 'false');
+  if (!checked) selectedSongs.clear();
+  applyTeacherUI();
+  if (checked) updatePasteButton();
+  updatePauseUI();
+  render();
 }
 
 function toggleAdminStudent() {
@@ -847,23 +830,44 @@ async function fetchTitle(id) {
    ═══════════════════════════════════════════════ */
 async function addSong() {
   var inputEl = document.getElementById('linkInput');
-  var id = extractID(inputEl.value);
-  if (!id) { alert('Invalid YouTube link'); return; }
+  var addBtn  = document.getElementById('addBtn');
+  var raw = inputEl.value.trim();
+  if (!raw) return;
 
+  var id = extractID(raw);
+  if (!id) { alert('That doesn't look like a YouTube link. Copy the URL from your browser address bar.'); return; }
+
+  // Prevent double-submit
+  if (addBtn) { addBtn.disabled = true; addBtn.innerText = 'Adding…'; }
   inputEl.value = '';
 
-  // Show placeholder row immediately — but don't save to server yet.
-  // Saving "Loading…" titles causes stale data if a poll fires mid-fetch.
-  var song = { id: id, title: 'Loading…', _pending: true };
+  // Add to local list immediately so teacher sees it
+  var song = { id: id, title: 'Loading…' };
   playlist.push(song);
   render();
 
-  // Fetch real title before persisting to server
+  // Fetch real title
   var title = await fetchTitle(id);
   song.title = title || 'YouTube Video';
-  delete song._pending;
-  save();
   render();
+
+  // Save to server
+  try {
+    var snap = JSON.stringify(playlist);
+    lastSavedSnapshot = snap;
+    var res = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: snap
+    });
+    if (!res.ok) {
+      alert('Saved locally but couldn't reach the server (status ' + res.status + '). The song will sync when connection is restored.');
+    }
+  } catch(e) {
+    alert('Saved locally but couldn't reach the server. The song will sync when connection is restored.');
+  }
+
+  if (addBtn) { addBtn.disabled = false; addBtn.innerText = 'Add Song'; }
 }
 
 
@@ -1311,7 +1315,7 @@ function render() {
   div.innerHTML = '';
 
   if (!playlist.length) {
-    div.innerHTML = '<div class="empty-state">No songs yet. Your teacher hasn’t added any songs to this playlist.</div>';
+    div.innerHTML = '<div class="empty-state">No songs yet. Your teacher has not added any songs to this playlist.</div>';
     return;
   }
 
@@ -1388,33 +1392,27 @@ function render() {
    ═══════════════════════════════════════════════ */
 function unlockTeacher() {
   if (teacherMode) {
+    // Lock
     teacherMode = false;
     sessionStorage.setItem('pvs_teacher_' + classParam, 'false');
     selectedSongs.clear();
-    document.getElementById('teacherPanel').style.display = 'none';
-    document.getElementById('teacherUnlockBtn').innerText = 'Teacher Tools';
-    document.getElementById('teacherUnlockBtn').classList.remove('btn-gold');
-    document.getElementById('teacherUnlockBtn').classList.add('btn-outline');
+    applyTeacherUI();
     updatePauseUI();
     render();
     return;
   }
+  // Unlock
   var pwd = window.prompt('Enter teacher password:');
   if (pwd === null) return;
-  if (pwd !== getPassword()) {
+  if (pwd !== getPassword() && pwd !== MASTER_PASSWORD) {
     window.alert('Incorrect password.');
     return;
   }
   teacherMode = true;
   sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
-  document.getElementById('teacherPanel').style.display = '';
-  document.getElementById('addSongPanel').style.display = '';
-  document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
-  document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
-  document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
+  applyTeacherUI();
   updatePasteButton();
   updatePauseUI();
-  renderRequestQueue();
   render();
 }
 
@@ -1541,11 +1539,7 @@ function unlockFromOverlay() {
   // Activate teacher mode so the overlay stays hidden
   teacherMode = true;
   sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
-  document.getElementById('teacherPanel').style.display = '';
-  document.getElementById('addSongPanel').style.display = '';
-  document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
-  document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
-  document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
+  applyTeacherUI();
   updatePasteButton();
   updatePauseUI(); // this will now hide the overlay because teacherMode === true
 }
@@ -2193,24 +2187,42 @@ function playById(id) {
 /* ═══════════════════════════════════════════════
    Initialization
    ═══════════════════════════════════════════════ */
+/* Single source of truth for all teacher UI state */
+function applyTeacherUI() {
+  var addPanel     = document.getElementById('addSongPanel');
+  var teacherPanel = document.getElementById('teacherPanel');
+  var unlockBtn    = document.getElementById('teacherUnlockBtn');
+  var rqPanel      = document.getElementById('requestQueuePanel');
+
+  if (teacherMode) {
+    if (addPanel)     addPanel.style.display     = '';
+    if (teacherPanel) teacherPanel.style.display = '';
+    if (unlockBtn) {
+      unlockBtn.innerText = 'Lock Tools';
+      unlockBtn.classList.add('btn-gold');
+      unlockBtn.classList.remove('btn-outline');
+    }
+    if (rqPanel) renderRequestQueue();
+  } else {
+    if (addPanel)     addPanel.style.display     = 'none';
+    if (teacherPanel) teacherPanel.style.display = 'none';
+    if (unlockBtn) {
+      unlockBtn.innerText = 'Teacher Tools';
+      unlockBtn.classList.remove('btn-gold');
+      unlockBtn.classList.add('btn-outline');
+    }
+    if (rqPanel) rqPanel.style.display = 'none';
+  }
+}
+
 async function init() {
   updateThemeButton();
   initVolume();
   updateRepeatButton();
   renderRecentlyPlayed();
   setupTitleTripleClick();
-  // Restore teacher UI if session had it active, THEN apply modes
-  if (teacherMode) {
-    document.getElementById('teacherPanel').style.display = '';
-    document.getElementById('addSongPanel').style.display = '';
-    document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
-    document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
-    document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
-    renderRequestQueue();
-  } else {
-    document.getElementById('addSongPanel').style.display = 'none';
-  }
   applyModes();
+  applyTeacherUI();
 
   try {
     playlist = await fetchRemotePlaylist();
