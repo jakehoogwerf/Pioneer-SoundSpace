@@ -28,7 +28,7 @@ export default async (req: Request, context: Context) => {
     return new Response('Invalid class', { status: 400 })
   }
 
-  const store = getStore({ name: 'class-banned', consistency: 'strong' })
+  const store = getStore('class-banned')
 
   if (req.method === 'GET') {
     const data = await store.get(className, { type: 'json' })
@@ -37,7 +37,9 @@ export default async (req: Request, context: Context) => {
 
   if (req.method === 'PUT' || req.method === 'POST') {
     let body: unknown
-    try { body = await req.json() } catch {
+    try {
+      body = await req.json()
+    } catch {
       return new Response('Invalid JSON', { status: 400 })
     }
     const cleaned = cleanIds(body)
