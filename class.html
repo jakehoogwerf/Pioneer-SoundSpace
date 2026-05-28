@@ -1173,6 +1173,8 @@ async function submitRequest() {
     existing.push({ id: Date.now(), text: text, ts: new Date().toISOString(), done: false });
     await fetch(reqApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(existing) });
     showReqFeedback('Request sent! Your teacher will see it.', 'success');
+    if (teacherMode) renderRequestQueue();
+    updateRequestBadge();
   } catch(e) { showReqFeedback('Could not send request - check connection.', 'error'); }
   input.disabled = false;
 }
@@ -1396,6 +1398,22 @@ async function backfillTitles() {
   }
 }
 
+// ── Request Badge ────────────────────────────────────
+async function updateRequestBadge() {
+  var btn = document.getElementById('teacherUnlockBtn');
+  if (!btn) return;
+  try {
+    var reqs = await fetchRequests();
+    var pending = reqs.filter(function(r) { return !r.done; }).length;
+    // Only show badge when not in teacher mode (teacher sees the full queue panel)
+    if (pending > 0 && !teacherMode) {
+      btn.textContent = 'Teacher Tools (' + pending + ')';
+    } else if (!teacherMode) {
+      btn.textContent = 'Teacher Tools';
+    }
+  } catch(e) {}
+}
+
 // ── Init ─────────────────────────────────────────────
 async function init() {
   // Theme button
@@ -1456,8 +1474,12 @@ async function init() {
   renderMostPlayed();
   setInterval(renderMostPlayed, 30000);
 
-  // Request queue poll (teacher only)
-  setInterval(function(){ if(teacherMode) renderRequestQueue(); }, 10000);
+  // Request queue - poll every 5s and update badge
+  setInterval(function() {
+    updateRequestBadge();
+    if (teacherMode) renderRequestQueue();
+  }, 5000);
+  updateRequestBadge();
 
   // Offline detection
   initOffline();
