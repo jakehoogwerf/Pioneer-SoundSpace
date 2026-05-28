@@ -52,6 +52,28 @@
 
   </div>
 
+  <!-- Song Request Panel (student-facing) -->
+  <div class="panel" id="requestPanel">
+    <h3>🎵 Request a Song</h3>
+    <p class="request-hint">Suggest a song for your teacher to add to the playlist.</p>
+    <div class="controls">
+      <input id="requestInput" placeholder="Song name and artist…" maxlength="120">
+      <button class="btn btn-gold btn-lg" onclick="submitRequest()">Request</button>
+    </div>
+    <div id="requestFeedback" class="request-feedback" aria-live="polite"></div>
+  </div>
+
+  <!-- Request Queue (teacher-facing, inside teacher panel area) -->
+  <div class="panel" id="requestQueuePanel" style="display:none;">
+    <div class="panel-head">
+      <h3>📥 Song Requests</h3>
+      <div class="panel-head-actions">
+        <button class="btn btn-sm btn-outline" onclick="clearAllRequests()">Clear All</button>
+      </div>
+    </div>
+    <div id="requestQueue" class="request-queue-list"></div>
+  </div>
+
   <!-- Recently Played -->
   <div class="panel" id="recentPanel" style="display:none;">
     <h3>Listening History</h3>
@@ -82,6 +104,7 @@
           <button class="btn btn-outline btn-sm" onclick="deselectAll()">Deselect All</button>
           <button class="btn btn-gold btn-sm" onclick="copySelected()">Copy Selected</button>
           <button class="btn btn-navy btn-sm" id="pasteBtn" onclick="pasteSongs()" disabled>Paste Songs</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSelected()">Delete Selected</button>
         </div>
         <div class="teacher-btn-group">
           <button class="btn btn-danger btn-sm" id="pauseAllBtn" onclick="togglePauseAll()">Pause All</button>
@@ -113,7 +136,7 @@
     <div class="player-bar-text">
       <div class="player-bar-label">Now Playing</div>
       <div class="player-bar-title-wrap">
-        <span class="eq eq-bar" id="playerBarEq" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="eq eq-bar" id="playerBarEq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
         <div class="player-bar-title-scroll" id="titleScrollWrap">
           <div class="player-bar-title" id="nowPlaying">Nothing playing</div>
         </div>
@@ -135,6 +158,12 @@
     <div class="player-bar-progress-fill" id="progressFill"></div>
     <div class="player-bar-progress-thumb" id="progressThumb"></div>
   </div>
+</div>
+
+<!-- Offline Banner -->
+<div id="offlineBanner" class="offline-banner" style="display:none;" aria-live="polite">
+  <span class="offline-icon">📡</span>
+  <span id="offlineBannerText">No internet connection — music will keep playing</span>
 </div>
 
 <!-- Pause Overlay -->
@@ -266,6 +295,33 @@ var classParam = params.get('class') || 'default';
 var className = classParam;
 var apiUrl = '/api/playlist/' + encodeURIComponent(classParam);
 var pauseApiUrl = '/api/pause/' + encodeURIComponent(classParam);
+
+/* Class colour themes */
+var CLASS_COLOURS = {
+  kangaroos: { h: '28',  s: '85%', accent: '#D4791A', lt: '#F0A040' },
+  bilby:     { h: '258', s: '65%', accent: '#7B5CD4', lt: '#A485F0' },
+  swans:     { h: '198', s: '80%', accent: '#1A9EC8', lt: '#3DC0E8' },
+  numbats:   { h: '340', s: '75%', accent: '#C8204A', lt: '#E84A72' },
+  bobtails:  { h: '162', s: '70%', accent: '#1AB87A', lt: '#3AD4A0' },
+  karak:     { h: '48',  s: '90%', accent: '#C89A10', lt: '#F0BC30' },
+  wombats:   { h: '14',  s: '80%', accent: '#C84820', lt: '#E87248' },
+  pe:        { h: '120', s: '55%', accent: '#3A9A3A', lt: '#5CBA5C' }
+};
+(function applyClassColour() {
+  var key = classParam.toLowerCase();
+  var col = CLASS_COLOURS[key];
+  if (!col) return;
+  var root = document.documentElement;
+  root.style.setProperty('--gold', col.accent);
+  root.style.setProperty('--gold-lt', col.lt);
+  root.style.setProperty('--gold-dim', 'hsla(' + col.h + ',' + col.s + ',.5,.18)');
+  root.style.setProperty('--accent', col.accent);
+  root.style.setProperty('--accent-lt', col.lt);
+  root.style.setProperty('--playing-border', col.accent);
+  root.style.setProperty('--playing-text', col.accent);
+  root.style.setProperty('--playing-glow', 'hsla(' + col.h + ',' + col.s + ',.5,.22)');
+  root.style.setProperty('--teacher-border', col.accent);
+})();
 
 document.getElementById('classTitle').innerText =
   className === 'PE' ? 'PE Class' : className.charAt(0).toUpperCase() + className.slice(1);
@@ -591,6 +647,8 @@ function toggleAdminTeacher() {
     selectedSongs.clear();
     document.getElementById('teacherPanel').style.display = 'none';
     document.getElementById('addSongPanel').style.display = 'none';
+    var rqp2 = document.getElementById('requestQueuePanel');
+    if (rqp2) rqp2.style.display = 'none';
     document.getElementById('teacherUnlockBtn').innerText = 'Teacher Tools';
     document.getElementById('teacherUnlockBtn').classList.remove('btn-gold');
     document.getElementById('teacherUnlockBtn').classList.add('btn-outline');
@@ -697,7 +755,12 @@ async function pollRemote() {
     if (next.length === 0 && playlist.length > 0) return;
     // Strip any songs the user just deleted (server may not have saved yet)
     if (recentlyDeletedIds.size > 0) {
+      var before = next.length;
       next = next.filter(function(s) { return !recentlyDeletedIds.has(s.id); });
+      // If we stripped something, re-push the correct list to server immediately
+      if (next.length !== before) {
+        fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(function(){});
+      }
     }
     if (!playlistsEqual(playlist, next)) {
       applyRemotePlaylist(next);
@@ -893,14 +956,18 @@ async function deleteSong(index) {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 
   // 3. Directly PUT the new playlist — don't go through the save() queue
-  //    which may be in-flight and returns early
-  lastSavedSnapshot = JSON.stringify(playlist);
+  var deleteSnap = JSON.stringify(playlist);
+  lastSavedSnapshot = deleteSnap;
   try {
-    await fetch(apiUrl, {
+    var delRes = await fetch(apiUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: lastSavedSnapshot
+      body: deleteSnap
     });
+    if (!delRes.ok) {
+      // If server rejected, try once more
+      await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: deleteSnap });
+    }
   } catch(e) {}
 
   // 4. Restart polling now that the server has the updated list
@@ -1150,7 +1217,11 @@ function updateNowPlaying() {
 function updatePlayButton() {
   var btn = document.getElementById('playBtn');
   var eq = document.getElementById('playerBarEq');
-  if (eq) eq.classList.toggle('is-playing', isPlaying && currentIndex >= 0);
+  if (eq) {
+    eq.classList.toggle('is-active', currentIndex >= 0);
+    eq.classList.toggle('eq-paused', currentIndex >= 0 && !isPlaying);
+    eq.classList.remove('is-playing');
+  }
   if (!btn) return;
   btn.innerText = isPlaying ? '⏸' : '▶';
   btn.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
@@ -1279,7 +1350,7 @@ function render() {
     item.setAttribute('role', 'button');
     item.setAttribute('tabindex', '0');
 
-    var showRemove = !studentMode && !focusMode;
+    var showRemove = teacherMode && !focusMode;
 
     item.innerHTML =
       '<div class="song-row-thumb">' +
@@ -1290,7 +1361,7 @@ function render() {
       '</div>' +
       '<div class="song-row-info">' +
         '<div class="song-row-title">' + escapeHtml(song.title) + '</div>' +
-        (i === currentIndex ? '<div class="song-row-status">Now playing</div>' : '') +
+        (i === currentIndex ? '<div class="song-row-status">Now playing</div><div class="song-row-wave"><i></i><i></i><i></i><i></i></div>' : '') +
       '</div>' +
       (showRemove ? '<button class="song-row-remove" aria-label="Remove" data-index="' + i + '">✕</button>' : '');
 
@@ -1372,7 +1443,47 @@ function unlockTeacher() {
   document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
   updatePasteButton();
   updatePauseUI();
+  renderRequestQueue();
   render();
+}
+
+async function deleteSelected() {
+  if (selectedSongs.size === 0) { alert('No songs selected.'); return; }
+  if (!confirm('Delete ' + selectedSongs.size + ' selected song(s)?')) return;
+  // Delete highest index first so lower indexes don't shift
+  var indexes = Array.from(selectedSongs).sort(function(a,b){ return b - a; });
+  selectedSongs.clear();
+  // Stop poll while we delete
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  for (var i = 0; i < indexes.length; i++) {
+    var idx = indexes[i];
+    var song = playlist[idx];
+    if (song && song.id) {
+      recentlyDeletedIds.add(song.id);
+      setTimeout((function(id){ return function(){ recentlyDeletedIds.delete(id); }; })(song.id), 30000);
+      if (song.id) banSong(song.id);
+    }
+    playlist.splice(idx, 1);
+    if (idx === currentIndex) {
+      currentIndex = -1; isPlaying = false;
+      try { ytPlayer && ytPlayer.stopVideo(); } catch(e){}
+      stopProgressTimer(); setProgress(0);
+    } else if (idx < currentIndex) {
+      currentIndex--;
+    }
+  }
+  render(); updateNowPlaying(); updatePlayButton();
+  // Single PUT with the fully updated playlist
+  try {
+    var snap = JSON.stringify(playlist);
+    lastSavedSnapshot = snap;
+    await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: snap
+    });
+  } catch(e) {}
+  startPolling();
 }
 
 function selectAll() {
@@ -1877,6 +1988,201 @@ function updateMarquee() {
 }
 
 /* ═══════════════════════════════════════════════
+   Song Request System
+   ═══════════════════════════════════════════════ */
+var requestApiUrl = '/api/requests/' + encodeURIComponent(classParam);
+var requestCooldownMs = 30000;
+var lastRequestTime = 0;
+var requestPollTimer = null;
+
+async function submitRequest() {
+  var input = document.getElementById('requestInput');
+  var feedback = document.getElementById('requestFeedback');
+  var text = (input.value || '').trim();
+  if (!text) { showRequestFeedback('Please type a song name first.', 'error'); return; }
+
+  var now = Date.now();
+  var wait = requestCooldownMs - (now - lastRequestTime);
+  if (wait > 0) {
+    showRequestFeedback('Please wait ' + Math.ceil(wait/1000) + 's before requesting again.', 'error');
+    return;
+  }
+
+  lastRequestTime = now;
+  input.value = '';
+  input.disabled = true;
+
+  try {
+    var existing = await fetchRequests();
+    if (existing.some(function(r) { return r.text.toLowerCase() === text.toLowerCase(); })) {
+      showRequestFeedback('✅ That song has already been requested!', 'info');
+      input.disabled = false; return;
+    }
+    var req = { id: Date.now(), text: text, ts: new Date().toISOString(), done: false };
+    existing.push(req);
+    await fetch(requestApiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(existing)
+    });
+    showRequestFeedback('✅ Request sent! Your teacher will see it shortly.', 'success');
+    renderRequestQueue();
+  } catch(e) {
+    showRequestFeedback('⚠️ Could not send request — check your connection.', 'error');
+  }
+  input.disabled = false;
+}
+
+function showRequestFeedback(msg, type) {
+  var el = document.getElementById('requestFeedback');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'request-feedback request-feedback-' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(function() { el.textContent = ''; el.className = 'request-feedback'; }, 5000);
+}
+
+async function fetchRequests() {
+  try {
+    var res = await fetch(requestApiUrl, { cache: 'no-store' });
+    if (!res.ok) return [];
+    var data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch(e) { return []; }
+}
+
+async function renderRequestQueue() {
+  var panel = document.getElementById('requestQueuePanel');
+  var list = document.getElementById('requestQueue');
+  if (!panel || !list) return;
+  if (!teacherMode) { panel.style.display = 'none'; return; }
+  var reqs = await fetchRequests();
+  var pending = reqs.filter(function(r) { return !r.done; });
+  panel.style.display = '';
+  if (pending.length === 0) {
+    list.innerHTML = '<div class="request-empty">No pending requests — students can submit from this page.</div>';
+    return;
+  }
+  list.innerHTML = pending.map(function(r) {
+    return '<div class="request-row" data-id="' + r.id + '">' +
+      '<div class="request-row-text">' +
+        '<span class="request-row-song">' + escapeHtml(r.text) + '</span>' +
+        '<span class="request-row-time">' + formatRequestTime(r.ts) + '</span>' +
+      '</div>' +
+      '<div class="request-row-actions">' +
+        '<button class="btn btn-sm btn-gold" onclick="approveRequest(' + r.id + ','' + escapeHtml(r.text).replace(/'/g,"\u0027") + '')">Add to Playlist</button>' +
+        '<button class="btn btn-sm btn-danger" onclick="dismissRequest(' + r.id + ')">Dismiss</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function formatRequestTime(iso) {
+  try {
+    var d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch(e) { return ''; }
+}
+
+async function approveRequest(id, songText) {
+  // Search YouTube for the song name and add top result
+  var feedback = 'Searching for: ' + songText + '…';
+  if (!confirm('Add "' + songText + '" to the playlist?
+
+This will search YouTube for the best match.')) return;
+  try {
+    // Use YouTube oEmbed search via noembed as proxy
+    var searchRes = await fetch('https://www.youtube.com/results?search_query=' + encodeURIComponent(songText));
+    // We can't scrape YouTube directly — instead open YouTube search for the teacher
+    window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(songText), '_blank');
+    await dismissRequest(id);
+    showRequestFeedback('YouTube opened in a new tab — copy the link and paste it above to add the song.', 'info');
+  } catch(e) {}
+}
+
+async function dismissRequest(id) {
+  var reqs = await fetchRequests();
+  reqs = reqs.map(function(r) { return r.id === id ? Object.assign({}, r, { done: true }) : r; });
+  await fetch(requestApiUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(reqs)
+  });
+  renderRequestQueue();
+}
+
+async function clearAllRequests() {
+  if (!confirm('Clear all song requests?')) return;
+  await fetch(requestApiUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify([])
+  });
+  renderRequestQueue();
+}
+
+function startRequestPolling() {
+  if (requestPollTimer) clearInterval(requestPollTimer);
+  requestPollTimer = setInterval(function() {
+    if (teacherMode) renderRequestQueue();
+  }, 10000);
+}
+
+/* ═══════════════════════════════════════════════
+   Offline Resilience
+   ═══════════════════════════════════════════════ */
+var isOffline = false;
+var offlineRetryTimer = null;
+
+function initOfflineDetection() {
+  window.addEventListener('online',  handleOnline);
+  window.addEventListener('offline', handleOffline);
+  if (!navigator.onLine) handleOffline();
+}
+
+function handleOffline() {
+  if (isOffline) return;
+  isOffline = true;
+  var banner = document.getElementById('offlineBanner');
+  var text = document.getElementById('offlineBannerText');
+  if (banner) {
+    if (text) text.textContent = isPlaying
+      ? 'No internet — music will keep playing until this song ends'
+      : 'No internet connection — reconnecting…';
+    banner.style.display = '';
+    banner.classList.add('offline-banner-visible');
+  }
+  // Keep playing current song — YouTube player buffers ahead
+  // Pause all polling to avoid error spam
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  // Schedule retry
+  offlineRetryTimer = setInterval(function() {
+    fetch('/api/playlist/' + encodeURIComponent(classParam), { cache: 'no-store', signal: AbortSignal.timeout(3000) })
+      .then(function() { handleOnline(); })
+      .catch(function() {});
+  }, 8000);
+}
+
+function handleOnline() {
+  if (!isOffline) return;
+  isOffline = false;
+  if (offlineRetryTimer) { clearInterval(offlineRetryTimer); offlineRetryTimer = null; }
+  var banner = document.getElementById('offlineBanner');
+  var text = document.getElementById('offlineBannerText');
+  if (banner) {
+    if (text) text.textContent = 'Back online — syncing…';
+    banner.classList.add('offline-banner-back');
+    setTimeout(function() {
+      banner.style.display = 'none';
+      banner.classList.remove('offline-banner-visible', 'offline-banner-back');
+    }, 2500);
+  }
+  // Resume polling
+  startPolling();
+  pollPauseState();
+}
+
+/* ═══════════════════════════════════════════════
    Most Played
    ═══════════════════════════════════════════════ */
 async function renderMostPlayed() {
@@ -1935,6 +2241,7 @@ async function init() {
     document.getElementById('teacherUnlockBtn').innerText = 'Lock Tools';
     document.getElementById('teacherUnlockBtn').classList.add('btn-gold');
     document.getElementById('teacherUnlockBtn').classList.remove('btn-outline');
+    renderRequestQueue();
   } else {
     document.getElementById('addSongPanel').style.display = 'none';
   }
@@ -1982,6 +2289,8 @@ async function init() {
   pollPauseState();
   renderMostPlayed();
   setInterval(renderMostPlayed, 30000);
+  startRequestPolling();
+  initOfflineDetection();
   setInterval(pollPauseState, 3000);
 }
 
