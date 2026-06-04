@@ -1948,7 +1948,7 @@ var ALL_CLASSES = ['kangaroos','bilby','swans','numbats','bobtails','karak','wom
 var params     = new URLSearchParams(window.location.search);
 var classParam = params.get('class') || 'default';
 var apiUrl     = '/api/playlist/' + encodeURIComponent(classParam);
-var pauseApiUrl= '/api/pause/'    + encodeURIComponent(classParam);
+var pauseApiUrl= '/api/pstate/' + encodeURIComponent(classParam);
 var banApiUrl  = '/api/banned/'   + encodeURIComponent(classParam);
 var reqApiUrl  = '/api/requests/' + encodeURIComponent(classParam);
 
