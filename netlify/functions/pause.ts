@@ -12,12 +12,11 @@ export default async (req: Request, context: Context) => {
     return new Response('Invalid class', { status: 400 })
   }
 
-  const store = getStore('class-pause')
+  const store = getStore('class-pause-state')
 
   if (req.method === 'GET') {
-    const data = await store.get(className, { type: 'json' })
-    const state = data && typeof data === 'object' ? data as { paused: boolean; locked: boolean } : { paused: false, locked: false }
-    return Response.json({ paused: !!state.paused, locked: !!state.locked })
+    const data = (await store.get(className, { type: 'json' })) as Record<string, unknown> | null
+    return Response.json({ paused: false, locked: false, ...data })
   }
 
   if (req.method === 'PUT' || req.method === 'POST') {
