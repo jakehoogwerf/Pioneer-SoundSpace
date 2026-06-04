@@ -18,7 +18,7 @@ export default async (req: Request, context: Context) => {
     return new Response('Invalid class', { status: 400 })
   }
 
-  const store = getStore({ name: 'class-pause-state', consistency: 'strong' })
+  const store = getStore('class-pause-state')
 
   if (req.method === 'GET') {
     const data = (await store.get(className, { type: 'json' })) as Record<string, unknown> | null
