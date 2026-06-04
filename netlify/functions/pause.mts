@@ -21,9 +21,7 @@ export default async (req: Request, context: Context) => {
 
   if (req.method === 'PUT' || req.method === 'POST') {
     let body: unknown
-    try {
-      body = await req.json()
-    } catch {
+    try { body = await req.json() } catch {
       return new Response('Invalid JSON', { status: 400 })
     }
     const b = body as Record<string, unknown>
@@ -36,6 +34,6 @@ export default async (req: Request, context: Context) => {
 }
 
 export const config: Config = {
-  path: '/api/pause/:class',
+  path: '/api/pstate/:class',
   method: ['GET', 'PUT', 'POST'],
 }
