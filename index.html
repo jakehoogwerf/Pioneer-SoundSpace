@@ -11,6 +11,8 @@
       var f = localStorage.getItem('pvs_force_theme');
       var t = (f === 'dark' || f === 'light') ? f : (localStorage.getItem('pvs_theme') || 'light');
       document.documentElement.setAttribute('data-theme', t);
+      var bg = localStorage.getItem('pvs_bg_theme');
+      if (bg && bg !== 'classic') document.documentElement.setAttribute('data-bg-theme', bg);
     })();
   </script>
 </head>
@@ -28,6 +30,26 @@
     </div>
   </div>
   <div class="header-right">
+    <div class="theme-picker-wrap">
+      <button class="btn btn-ghost theme-toggle" id="bgThemeBtn" onclick="toggleBgThemeMenu()" aria-label="Background colour" title="Background colour">🎨</button>
+      <div id="bgThemeMenu" class="bg-theme-menu" style="display:none;" role="menu">
+        <button class="bg-theme-swatch" data-theme-name="classic" onclick="setBgTheme('classic')" style="--swatch:#1B3A5C;">
+          <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Classic</span>
+        </button>
+        <button class="bg-theme-swatch" data-theme-name="ocean" onclick="setBgTheme('ocean')" style="--swatch:#0E7490;">
+          <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Ocean</span>
+        </button>
+        <button class="bg-theme-swatch" data-theme-name="sunset" onclick="setBgTheme('sunset')" style="--swatch:#C2410C;">
+          <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Sunset</span>
+        </button>
+        <button class="bg-theme-swatch" data-theme-name="forest" onclick="setBgTheme('forest')" style="--swatch:#166534;">
+          <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Forest</span>
+        </button>
+        <button class="bg-theme-swatch" data-theme-name="bubblegum" onclick="setBgTheme('bubblegum')" style="--swatch:#A21CAF;">
+          <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Bubblegum</span>
+        </button>
+      </div>
+    </div>
     <button class="btn btn-ghost theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
     <a class="btn btn-ghost" href="https://pvs-pe-hub.netlify.app/">PE Hub</a>
   </div>
@@ -103,6 +125,55 @@ function updateThemeButton() {
   if (btn) btn.textContent = getTheme() === 'dark' ? '☀️' : '🌙';
 }
 updateThemeButton();
+
+// ── Background Theme Picker (student-facing, per-browser) ────
+var BG_THEME_NAMES = ['classic', 'ocean', 'sunset', 'forest', 'bubblegum'];
+
+function getBgTheme() {
+  var saved = localStorage.getItem('pvs_bg_theme');
+  return BG_THEME_NAMES.indexOf(saved) >= 0 ? saved : 'classic';
+}
+
+function applyBgTheme(name) {
+  document.body.classList.add('theme-transition');
+  if (name === 'classic') {
+    document.documentElement.removeAttribute('data-bg-theme');
+  } else {
+    document.documentElement.setAttribute('data-bg-theme', name);
+  }
+  setTimeout(function() { document.body.classList.remove('theme-transition'); }, 350);
+}
+
+function setBgTheme(name) {
+  if (BG_THEME_NAMES.indexOf(name) < 0) name = 'classic';
+  localStorage.setItem('pvs_bg_theme', name);
+  applyBgTheme(name);
+  updateBgThemeSelection();
+  toggleBgThemeMenu(false);
+}
+
+function updateBgThemeSelection() {
+  var current = getBgTheme();
+  document.querySelectorAll('.bg-theme-swatch').forEach(function(btn) {
+    btn.classList.toggle('is-selected', btn.getAttribute('data-theme-name') === current);
+  });
+}
+
+function toggleBgThemeMenu(force) {
+  var menu = document.getElementById('bgThemeMenu');
+  if (!menu) return;
+  var show = typeof force === 'boolean' ? force : menu.style.display === 'none';
+  menu.style.display = show ? '' : 'none';
+}
+
+document.addEventListener('click', function(e) {
+  var wrap = document.querySelector('.theme-picker-wrap');
+  var menu = document.getElementById('bgThemeMenu');
+  if (!wrap || !menu || menu.style.display === 'none') return;
+  if (!wrap.contains(e.target)) toggleBgThemeMenu(false);
+});
+
+updateBgThemeSelection();
 </script>
 
 </body>
