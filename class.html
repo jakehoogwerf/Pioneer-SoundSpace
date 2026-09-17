@@ -2148,8 +2148,7 @@ body.has-player-bar {
           <input type="file" id="importFileInput" accept="application/json,.json" style="display:none;" onchange="importPlaylist(event)">
         </div>
         <div class="teacher-btn-group">
-          <button class="btn btn-danger btn-sm" id="pauseAllBtn" onclick="togglePauseAll()">Pause All</button>
-          <button class="btn btn-outline btn-sm" id="lockAllBtn" onclick="toggleLockAll()">&#128274; Lock Playback</button>
+          <button class="btn btn-danger btn-sm" id="pauseAllBtn" onclick="togglePauseAll()">&#9208; Pause All</button>
         </div>
         <div class="teacher-btn-group teacher-schedule-group" id="scheduleGroup">
           <label style="font-size:12px;font-weight:600;color:var(--text-muted);align-self:center;">&#9200; Schedule:</label>
@@ -3411,14 +3410,16 @@ async function importPlaylist(event) {
 }
 
 // ── Pause / Lock System ──────────────────────────────
+// "Pause All" now pauses AND locks together in one action: playback stops
+// everywhere (including the teacher's own device) and can't be restarted
+// by anyone - including a student pressing play - until "Resume All" is
+// clicked. Previously these were two separate toggles, which meant a
+// student could press play again after a plain pause; combining them
+// closes that gap with a single button.
 async function togglePauseAll() {
-  classPaused = !classPaused;
-  try { await fetch(pauseApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paused: classPaused, locked: classLocked }) }); } catch(e) {}
-  updatePauseUI();
-}
-
-async function toggleLockAll() {
-  classLocked = !classLocked;
+  var next = !classPaused;
+  classPaused = next;
+  classLocked = next;
   try { await fetch(pauseApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paused: classPaused, locked: classLocked }) }); } catch(e) {}
   updatePauseUI();
 }
@@ -3440,20 +3441,21 @@ function updatePauseUI() {
   var title     = document.getElementById('pauseOverlayTitle');
   var text      = document.getElementById('pauseOverlayText');
   var pauseBtn  = document.getElementById('pauseAllBtn');
-  var lockBtn   = document.getElementById('lockAllBtn');
   var shouldBePaused = classPaused || classLocked;
 
   // The teacher still doesn't see the blocking overlay (they need access
   // to Teacher Tools to undo it), but their own playback now pauses too.
   if (overlay) overlay.style.display = (!teacherMode && shouldBePaused) ? '' : 'none';
 
-  if (pauseBtn) { pauseBtn.textContent = classPaused ? 'Resume All' : 'Pause All'; pauseBtn.className = 'btn btn-sm ' + (classPaused ? 'btn-gold' : 'btn-danger'); }
-  if (lockBtn)  { lockBtn.textContent  = classLocked ? '\ud83d\udd13 Unlock' : '\ud83d\udd12 Lock Playback'; }
+  if (pauseBtn) {
+    pauseBtn.innerHTML = shouldBePaused ? '&#9654; Resume All' : '&#9208; Pause All';
+    pauseBtn.className = 'btn btn-sm ' + (shouldBePaused ? 'btn-gold' : 'btn-danger');
+  }
 
   // Always act on the actual player, never gated on our own isPlaying
   // tracking var - pausing an already-paused player is a harmless no-op,
   // and this avoids missing the pause entirely on a timing race. Applies
-  // to the teacher's own device too now, not just students.
+  // to the teacher's own device too, not just students.
   if (ytPlayer) {
     if (shouldBePaused) {
       forcePausedActive = true;
@@ -3466,9 +3468,9 @@ function updatePauseUI() {
   }
 
   if (shouldBePaused) {
-    if (icon)  icon.textContent  = classLocked ? '\ud83d\udd12' : '||';
-    if (title) title.textContent = classLocked ? 'Playback Locked' : 'Playback Paused';
-    if (text)  text.textContent  = classLocked ? 'Your teacher has locked playback.' : 'Your teacher has paused playback.';
+    if (icon)  icon.textContent  = '||';
+    if (title) title.textContent = 'Playback Paused';
+    if (text)  text.textContent  = 'Your teacher has paused playback for this class.';
   }
 }
 
