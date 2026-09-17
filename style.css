@@ -255,7 +255,11 @@
   cursor: pointer;
   transition: background .15s, border-color .15s;
   font-family: 'Barlow', sans-serif;
+  position: relative;
+  overflow: hidden;
+  --ripple-color: rgba(27,58,92,.14);
 }
+[data-theme="dark"] .bg-theme-swatch { --ripple-color: rgba(255,255,255,.12); }
 .bg-theme-swatch:hover { background: var(--surface-hover); }
 .bg-theme-swatch.is-selected { border-color: var(--accent); background: var(--surface-hover); }
 .bg-theme-swatch-dot {
@@ -283,6 +287,20 @@
   padding-top: 10px;
   margin-top: 4px;
   border-top: 1px solid var(--border-subtle);
+}
+.aurora-toggle-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+}
+.aurora-toggle-row span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: .01em;
 }
 .hue-slider-label {
   font-size: 10px;
@@ -418,8 +436,24 @@ body {
   letter-spacing: .01em;
   position: relative;
   overflow: hidden;
+  --ripple-color: rgba(255,255,255,.45);
 }
 .btn:active { transform: scale(.96); }
+.btn-outline, .btn-danger { --ripple-color: rgba(27,58,92,.14); }
+[data-theme="dark"] .btn-outline, [data-theme="dark"] .btn-danger { --ripple-color: rgba(255,255,255,.14); }
+
+.ripple-el {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--ripple-color, rgba(255,255,255,.4));
+  transform: scale(0);
+  opacity: 1;
+  pointer-events: none;
+  animation: ripple-anim .55s ease-out forwards;
+}
+@keyframes ripple-anim {
+  to { transform: scale(1); opacity: 0; }
+}
 
 .btn-gold {
   background: linear-gradient(135deg, var(--gold) 0%, var(--gold-lt) 100%);
