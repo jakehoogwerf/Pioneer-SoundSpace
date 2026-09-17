@@ -111,6 +111,176 @@
   --gold-lt: #E8BC50;
 }
 
+/* ═══════════════════════════════════════════════
+   Background Themes — student-facing, cosmetic only.
+   These only touch background/surface/border colours,
+   never --accent/--gold, which stay tied to the class
+   (Kangaroos orange, Swans blue, etc). Selected via
+   data-bg-theme on <html>, stacks with light/dark mode.
+   ═══════════════════════════════════════════════ */
+:root[data-bg-theme="ocean"] {
+  --bg: #EAF6FB;
+  --bg-alt: #DCEEF6;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-hover: #F0FAFD;
+  --border: #C7E3EE;
+  --border-subtle: #DBEFF5;
+  --input-bg: #FFFFFF;
+  --input-border: #BFDCE9;
+  --header-bg: linear-gradient(135deg, #083344 0%, #0E7490 55%, #0891B2 100%);
+  --player-bg: linear-gradient(180deg, #0B2430 0%, #071A22 100%);
+  --overlay-bg: rgba(6, 26, 34, .82);
+}
+:root[data-theme="dark"][data-bg-theme="ocean"] {
+  --bg: #071B26;
+  --bg-alt: #05141C;
+  --surface: #0F2A36;
+  --surface-raised: #12303D;
+  --surface-hover: #142F3D;
+  --border: #163B48;
+  --border-subtle: #102834;
+  --input-bg: #12303D;
+  --input-border: #1D4453;
+  --header-bg: linear-gradient(135deg, #030D12 0%, #06232E 55%, #0A2F3B 100%);
+  --player-bg: linear-gradient(180deg, #06181F 0%, #030D12 100%);
+  --overlay-bg: rgba(0, 0, 0, .88);
+}
+
+:root[data-bg-theme="sunset"] {
+  --bg: #FFF3EC;
+  --bg-alt: #FFE8DA;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-hover: #FFF6F0;
+  --border: #FFD8C2;
+  --border-subtle: #FFE6D6;
+  --input-bg: #FFFFFF;
+  --input-border: #FBCBAE;
+  --header-bg: linear-gradient(135deg, #7C2D12 0%, #C2410C 55%, #DB2777 100%);
+  --player-bg: linear-gradient(180deg, #2B140B 0%, #1C0C06 100%);
+  --overlay-bg: rgba(35, 15, 8, .82);
+}
+:root[data-theme="dark"][data-bg-theme="sunset"] {
+  --bg: #241209;
+  --bg-alt: #1A0D06;
+  --surface: #2E1810;
+  --surface-raised: #351C13;
+  --surface-hover: #351E14;
+  --border: #4A2414;
+  --border-subtle: #331A0F;
+  --input-bg: #2E1810;
+  --input-border: #543018;
+  --header-bg: linear-gradient(135deg, #170A05 0%, #341407 55%, #4A1A0A 100%);
+  --player-bg: linear-gradient(180deg, #190B05 0%, #100603 100%);
+  --overlay-bg: rgba(0, 0, 0, .88);
+}
+
+:root[data-bg-theme="forest"] {
+  --bg: #F0F7F0;
+  --bg-alt: #E3F0E3;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-hover: #F3FAF3;
+  --border: #CFE8CF;
+  --border-subtle: #E0F1E0;
+  --input-bg: #FFFFFF;
+  --input-border: #C0DEC0;
+  --header-bg: linear-gradient(135deg, #0C2E17 0%, #14532D 55%, #166534 100%);
+  --player-bg: linear-gradient(180deg, #0B1F10 0%, #071408 100%);
+  --overlay-bg: rgba(7, 28, 14, .82);
+}
+:root[data-theme="dark"][data-bg-theme="forest"] {
+  --bg: #0A1F0F;
+  --bg-alt: #071708;
+  --surface: #123018;
+  --surface-raised: #15371C;
+  --surface-hover: #163A1E;
+  --border: #1F4A28;
+  --border-subtle: #142E19;
+  --input-bg: #123018;
+  --input-border: #24552E;
+  --header-bg: linear-gradient(135deg, #040F07 0%, #0B1F0F 55%, #0F2A15 100%);
+  --player-bg: linear-gradient(180deg, #071108 0%, #040A05 100%);
+  --overlay-bg: rgba(0, 0, 0, .88);
+}
+
+:root[data-bg-theme="bubblegum"] {
+  --bg: #FDF2FB;
+  --bg-alt: #FBE7F7;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-hover: #FEF4FC;
+  --border: #F5CBEA;
+  --border-subtle: #FBE0F3;
+  --input-bg: #FFFFFF;
+  --input-border: #F0BEE3;
+  --header-bg: linear-gradient(135deg, #4A0E38 0%, #701A4B 55%, #A21CAF 100%);
+  --player-bg: linear-gradient(180deg, #230A1B 0%, #170611 100%);
+  --overlay-bg: rgba(30, 8, 24, .82);
+}
+:root[data-theme="dark"][data-bg-theme="bubblegum"] {
+  --bg: #240A1D;
+  --bg-alt: #1A0714;
+  --surface: #2E1027;
+  --surface-raised: #35132E;
+  --surface-hover: #35142E;
+  --border: #4A1A3D;
+  --border-subtle: #330F2A;
+  --input-bg: #2E1027;
+  --input-border: #542046;
+  --header-bg: linear-gradient(135deg, #180612 0%, #330A28 55%, #470E3A 100%);
+  --player-bg: linear-gradient(180deg, #1A0714 0%, #10040C 100%);
+  --overlay-bg: rgba(0, 0, 0, .88);
+}
+
+/* ── Theme picker button + popover ── */
+.theme-picker-wrap { position: relative; display: inline-flex; }
+.bg-theme-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 200px;
+  z-index: 260;
+}
+.bg-theme-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 4px;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  font-family: 'Barlow', sans-serif;
+}
+.bg-theme-swatch:hover { background: var(--surface-hover); }
+.bg-theme-swatch.is-selected { border-color: var(--accent); background: var(--surface-hover); }
+.bg-theme-swatch-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--swatch, #999);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 1px 4px rgba(0,0,0,.25);
+}
+.bg-theme-swatch-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: .02em;
+}
+.bg-theme-swatch.is-selected .bg-theme-swatch-label { color: var(--text); }
+
 /* ── Smooth theme transition ── */
 .theme-transition,
 .theme-transition *,
@@ -1683,6 +1853,8 @@ body.has-player-bar {
       var f = localStorage.getItem('pvs_force_theme');
       var t = (f === 'dark' || f === 'light') ? f : (localStorage.getItem('pvs_theme') || 'light');
       document.documentElement.setAttribute('data-theme', t);
+      var bg = localStorage.getItem('pvs_bg_theme');
+      if (bg && bg !== 'classic') document.documentElement.setAttribute('data-bg-theme', bg);
     })();
   </script>
 </head>
@@ -1700,6 +1872,26 @@ body.has-player-bar {
     </div>
   </div>
   <div class="header-right">
+    <div class="theme-picker-wrap">
+      <button class="btn btn-ghost theme-toggle" id="bgThemeBtn" onclick="toggleBgThemeMenu()" aria-label="Background colour" title="Background colour">&#127912;</button>
+      <div id="bgThemeMenu" class="bg-theme-menu" style="display:none;" role="menu">
+        <button class="bg-theme-swatch" data-theme-name="classic" onclick="setBgTheme('classic')" style="--swatch:#1B3A5C;">
+          <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Classic</span>
+        </button>
+        <button class="bg-theme-swatch" data-theme-name="ocean" onclick="setBgTheme('ocean')" style="--swatch:#0E7490;">
+          <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Ocean</span>
+        </button>
+        <button class="bg-theme-swatch" data-theme-name="sunset" onclick="setBgTheme('sunset')" style="--swatch:#C2410C;">
+          <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Sunset</span>
+        </button>
+        <button class="bg-theme-swatch" data-theme-name="forest" onclick="setBgTheme('forest')" style="--swatch:#166534;">
+          <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Forest</span>
+        </button>
+        <button class="bg-theme-swatch" data-theme-name="bubblegum" onclick="setBgTheme('bubblegum')" style="--swatch:#A21CAF;">
+          <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Bubblegum</span>
+        </button>
+      </div>
+    </div>
     <button class="btn btn-ghost theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">&#127769;</button>
     <a class="btn btn-ghost" href="index.html">All Classes</a>
   </div>
@@ -2065,6 +2257,54 @@ function applyTheme(t) {
   document.getElementById('themeToggle').textContent = t === 'dark' ? '\u2600\ufe0f' : '\ud83c\udf19';
   setTimeout(function() { document.body.classList.remove('theme-transition'); }, 350);
 }
+
+// ── Background Theme Picker (student-facing, per-browser) ────
+var BG_THEME_NAMES = ['classic', 'ocean', 'sunset', 'forest', 'bubblegum'];
+
+function getBgTheme() {
+  var saved = localStorage.getItem('pvs_bg_theme');
+  return BG_THEME_NAMES.indexOf(saved) >= 0 ? saved : 'classic';
+}
+
+function applyBgTheme(name) {
+  document.body.classList.add('theme-transition');
+  if (name === 'classic') {
+    document.documentElement.removeAttribute('data-bg-theme');
+  } else {
+    document.documentElement.setAttribute('data-bg-theme', name);
+  }
+  setTimeout(function() { document.body.classList.remove('theme-transition'); }, 350);
+}
+
+function setBgTheme(name) {
+  if (BG_THEME_NAMES.indexOf(name) < 0) name = 'classic';
+  localStorage.setItem('pvs_bg_theme', name);
+  applyBgTheme(name);
+  updateBgThemeSelection();
+  toggleBgThemeMenu(false);
+}
+
+function updateBgThemeSelection() {
+  var current = getBgTheme();
+  document.querySelectorAll('.bg-theme-swatch').forEach(function(btn) {
+    btn.classList.toggle('is-selected', btn.getAttribute('data-theme-name') === current);
+  });
+}
+
+function toggleBgThemeMenu(force) {
+  var menu = document.getElementById('bgThemeMenu');
+  if (!menu) return;
+  var show = typeof force === 'boolean' ? force : menu.style.display === 'none';
+  menu.style.display = show ? '' : 'none';
+}
+
+// Close the popover when clicking anywhere outside it.
+document.addEventListener('click', function(e) {
+  var wrap = document.querySelector('.theme-picker-wrap');
+  var menu = document.getElementById('bgThemeMenu');
+  if (!wrap || !menu || menu.style.display === 'none') return;
+  if (!wrap.contains(e.target)) toggleBgThemeMenu(false);
+});
 
 // ── Teacher UI (single source of truth) ─────────────
 function applyTeacherUI() {
@@ -3236,6 +3476,9 @@ async function updateRequestBadge() {
 async function init() {
   // Theme button
   document.getElementById('themeToggle').textContent = getTheme() === 'dark' ? '\u2600\ufe0f' : '\ud83c\udf19';
+
+  // Background theme picker - mark the current selection
+  updateBgThemeSelection();
 
   // Volume
   var slider = document.getElementById('volumeSlider');
