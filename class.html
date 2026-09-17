@@ -3023,14 +3023,14 @@ async function adminClearCurrent() {
   if (ytPlayer) { try { ytPlayer.stopVideo(); } catch(e) {} }
   stopProgressTimer(); setProgress(0);
   lastSnap = '[]';
-  await fetch(apiUrl, { method:'PUT', headers:{'Content-Type':'application/json'}, body:'[]' });
+  await fetch(apiUrl + '?confirm=true', { method:'PUT', headers:{'Content-Type':'application/json'}, body:'[]' });
   render(); updateNowPlaying(); updatePlayBtn();
   alert('Playlist cleared.');
 }
 
 async function adminClearAll() {
   if (!confirm('Clear ALL class playlists?')) return;
-  await Promise.all(ALL_CLASSES.map(function(c){ return fetch('/api/playlist/'+encodeURIComponent(c),{method:'PUT',headers:{'Content-Type':'application/json'},body:'[]'}).catch(function(){}); }));
+  await Promise.all(ALL_CLASSES.map(function(c){ return fetch('/api/playlist/'+encodeURIComponent(c)+'?confirm=true',{method:'PUT',headers:{'Content-Type':'application/json'},body:'[]'}).catch(function(){}); }));
   playlist=[]; currentIndex=-1; isPlaying=false;
   if(ytPlayer){try{ytPlayer.stopVideo();}catch(e){}}
   stopProgressTimer(); setProgress(0); lastSnap='[]';
