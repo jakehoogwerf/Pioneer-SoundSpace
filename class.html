@@ -1779,6 +1779,11 @@ body.has-player-bar {
           <button class="btn btn-danger btn-sm" onclick="deleteSelected()">Delete Selected</button>
         </div>
         <div class="teacher-btn-group">
+          <button class="btn btn-outline btn-sm" onclick="exportPlaylist()">&#11015; Export Playlist</button>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('importFileInput').click()">&#11014; Import Playlist</button>
+          <input type="file" id="importFileInput" accept="application/json,.json" style="display:none;" onchange="importPlaylist(event)">
+        </div>
+        <div class="teacher-btn-group">
           <button class="btn btn-danger btn-sm" id="pauseAllBtn" onclick="togglePauseAll()">Pause All</button>
           <button class="btn btn-outline btn-sm" id="lockAllBtn" onclick="toggleLockAll()">&#128274; Lock Playback</button>
         </div>
@@ -2688,6 +2693,98 @@ async function pasteSongs() {
   try { await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap }); } catch(e) {}
 }
 
+// ── Export / Import Playlist ─────────────────────────
+function exportPlaylist() {
+  var data = {
+    class: classParam,
+    exportedAt: new Date().toISOString(),
+    songs: playlist.map(function(s) { return { id: s.id, title: s.title }; })
+  };
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var datePart = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = classParam + '-playlist-' + datePart + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+
+async function importPlaylist(event) {
+  var input = event.target;
+  var file = input.files && input.files[0];
+  input.value = ''; // allow re-selecting the same file later
+  if (!file) return;
+
+  var text;
+  try {
+    text = await file.text();
+  } catch(e) {
+    alert('Could not read that file.');
+    return;
+  }
+
+  var parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch(e) {
+    alert('That file is not valid JSON. Use a file previously created with "Export Playlist".');
+    return;
+  }
+
+  // Accept either the { class, exportedAt, songs: [...] } export format,
+  // or a bare array of { id, title } songs.
+  var songs = Array.isArray(parsed) ? parsed : parsed.songs;
+  if (!Array.isArray(songs)) {
+    alert('That file does not look like a playlist export.');
+    return;
+  }
+
+  var cleaned = [];
+  var seen = new Set();
+  songs.forEach(function(s) {
+    if (!s || typeof s.id !== 'string') return;
+    if (seen.has(s.id)) return;
+    seen.add(s.id);
+    cleaned.push({ id: s.id, title: typeof s.title === 'string' && s.title ? s.title : 'YouTube Video' });
+  });
+
+  if (!cleaned.length) {
+    alert('No valid songs found in that file.');
+    return;
+  }
+
+  var mergeChoice = confirm(
+    'Import ' + cleaned.length + ' song(s) into "' + classParam + '".\n\n' +
+    'Click OK to ADD them to the current playlist, or Cancel to REPLACE the ' +
+    'current playlist with only the imported songs.'
+  );
+
+  var finalPlaylist;
+  if (mergeChoice) {
+    var existingIds = new Set(playlist.map(function(s) { return s.id; }));
+    finalPlaylist = playlist.concat(cleaned.filter(function(s) { return !existingIds.has(s.id); }));
+  } else {
+    if (!confirm('This will replace the entire current playlist. Are you sure?')) return;
+    finalPlaylist = cleaned;
+  }
+
+  playlist = finalPlaylist;
+  render(); updateNowPlaying();
+  lastSnap = JSON.stringify(playlist);
+  try {
+    var res = await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap });
+    if (!res.ok) {
+      var msg = await res.text().catch(function(){ return ''; });
+      alert('Saved locally, but the server rejected the save: ' + (msg || res.status));
+    }
+  } catch(e) {
+    alert('Saved locally, but could not reach the server (offline?). It will not sync until you reconnect and save again.');
+  }
+}
+
 // ── Pause / Lock System ──────────────────────────────
 async function togglePauseAll() {
   classPaused = !classPaused;
@@ -2828,24 +2925,51 @@ async function renderMostPlayed() {
 function playById(id) { var i = playlist.findIndex(function(s){ return s.id===id; }); if (i>=0) play(i); }
 
 // ── Song Request System ──────────────────────────────
-var reqCooldown = 0;
 var reqCooldownMs = 30000;
+
+// A persistent per-browser id (survives reloads, unlike an in-memory
+// variable) so the server can actually enforce a cooldown instead of
+// trusting the client not to just refresh the page to bypass it.
+function getClientId() {
+  var id = localStorage.getItem('pvs_client_id');
+  if (!id) {
+    id = (window.crypto && window.crypto.randomUUID)
+      ? window.crypto.randomUUID()
+      : 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    localStorage.setItem('pvs_client_id', id);
+  }
+  return id;
+}
+
+function getReqCooldownKey() { return 'pvs_req_cooldown_' + classParam; }
 
 async function submitRequest() {
   var input    = document.getElementById('requestInput');
   var feedback = document.getElementById('requestFeedback');
   var text     = (input.value || '').trim();
   if (!text) { showReqFeedback('Please type a song name.', 'error'); return; }
+
+  // Client-side cooldown check is just a fast, friendly UX hint - it
+  // persists in localStorage so a page refresh doesn't reset it. The
+  // server enforces the real limit regardless (see requests.mts).
   var now = Date.now();
-  if (now - reqCooldown < reqCooldownMs) { showReqFeedback('Please wait ' + Math.ceil((reqCooldownMs-(now-reqCooldown))/1000) + 's', 'error'); return; }
-  reqCooldown = now; input.value = ''; input.disabled = true;
+  var lastReq = parseInt(localStorage.getItem(getReqCooldownKey()) || '0', 10) || 0;
+  if (now - lastReq < reqCooldownMs) {
+    showReqFeedback('Please wait ' + Math.ceil((reqCooldownMs - (now - lastReq)) / 1000) + 's', 'error');
+    return;
+  }
+  localStorage.setItem(getReqCooldownKey(), String(now));
+  input.value = ''; input.disabled = true;
   try {
     var existing = await fetchRequests();
     if (existing.some(function(r){ return !r.done && r.text.toLowerCase() === text.toLowerCase(); })) { showReqFeedback('Already requested!', 'info'); input.disabled=false; return; }
-    existing.push({ id: Date.now(), text: text, ts: new Date().toISOString(), done: false });
+    existing.push({ id: Date.now(), text: text, ts: new Date().toISOString(), done: false, clientId: getClientId() });
     var putRes = await fetch(reqApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(existing) });
     if (putRes.ok) {
       showReqFeedback('Request sent! Your teacher will see it shortly.', 'success');
+    } else if (putRes.status === 429) {
+      var msg = await putRes.text().catch(function(){ return ''; });
+      showReqFeedback(msg || 'Slow down - too many requests.', 'error');
     } else {
       showReqFeedback('Could not send request - please try again.', 'error');
     }
