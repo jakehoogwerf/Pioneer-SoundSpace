@@ -12,7 +12,7 @@
       var t = (f === 'dark' || f === 'light') ? f : (localStorage.getItem('pvs_theme') || 'light');
       document.documentElement.setAttribute('data-theme', t);
       var bg = localStorage.getItem('pvs_bg_theme');
-      if (bg === 'custom') {
+      if (bg === 'custom' || bg === 'aurora') {
         var hue = parseInt(localStorage.getItem('pvs_bg_hue') || '210', 10) || 0;
         hue = ((hue % 360) + 360) % 360;
         var isDark = t === 'dark';
@@ -78,6 +78,13 @@
           <span class="hue-slider-dot" id="hueSliderDot" style="background:hsl(210,70%,55%);"></span>
           <input type="range" min="0" max="360" step="1" class="hue-slider" id="hueSlider" value="210"
                  oninput="setCustomHue(this.value)" aria-label="Custom background colour">
+        </div>
+        <div class="aurora-toggle-row">
+          <span>&#127756; Aurora (animated)</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="auroraToggle" onchange="toggleAurora(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
       </div>
     </div>
@@ -158,14 +165,36 @@ function updateThemeButton() {
 }
 updateThemeButton();
 
+// ── Click Ripple Effect ───────────────────────────────
+function spawnRipple(el, clientX, clientY) {
+  var rect = el.getBoundingClientRect();
+  var size = Math.max(rect.width, rect.height) * 1.8;
+  var ripple = document.createElement('span');
+  ripple.className = 'ripple-el';
+  ripple.style.width = size + 'px';
+  ripple.style.height = size + 'px';
+  ripple.style.left = (clientX - rect.left - size / 2) + 'px';
+  ripple.style.top = (clientY - rect.top - size / 2) + 'px';
+  el.appendChild(ripple);
+  ripple.addEventListener('animationend', function() { ripple.remove(); });
+}
+document.addEventListener('pointerdown', function(e) {
+  var el = e.target.closest('.btn, .bg-theme-swatch');
+  if (!el || el.disabled) return;
+  spawnRipple(el, e.clientX, e.clientY);
+});
+
 // ── Background Theme Picker (student-facing, per-browser) ────
 var BG_THEME_NAMES = ['classic', 'ocean', 'sunset', 'forest', 'bubblegum'];
 var CUSTOM_HUE_VARS = ['--bg','--bg-alt','--surface','--surface-raised','--surface-hover',
   '--border','--border-subtle','--input-bg','--input-border','--header-bg','--player-bg','--overlay-bg'];
+var auroraTimer = null;
+var auroraHue = 0;
+var AURORA_CYCLE_MS = 90000;
 
 function getBgTheme() {
   var saved = localStorage.getItem('pvs_bg_theme');
-  if (saved === 'custom') return 'custom';
+  if (saved === 'custom' || saved === 'aurora') return saved;
   return BG_THEME_NAMES.indexOf(saved) >= 0 ? saved : 'classic';
 }
 
@@ -181,6 +210,7 @@ function applyBgTheme(name) {
 
 function setBgTheme(name) {
   if (BG_THEME_NAMES.indexOf(name) < 0) name = 'classic';
+  stopAurora();
   localStorage.setItem('pvs_bg_theme', name);
   localStorage.removeItem('pvs_bg_hue');
   clearCustomHueVars();
@@ -242,6 +272,7 @@ function applyCustomHue(hue) {
 
 function setCustomHue(hue) {
   hue = parseInt(hue, 10) || 0;
+  stopAurora();
   document.body.classList.add('theme-transition');
   document.documentElement.removeAttribute('data-bg-theme');
   applyCustomHue(hue);
@@ -251,9 +282,44 @@ function setCustomHue(hue) {
   setTimeout(function() { document.body.classList.remove('theme-transition'); }, 350);
 }
 
+function toggleAurora(on) {
+  if (on) {
+    document.documentElement.removeAttribute('data-bg-theme');
+    localStorage.setItem('pvs_bg_theme', 'aurora');
+    auroraHue = parseInt(localStorage.getItem('pvs_bg_hue') || '0', 10) || 0;
+    startAurora();
+  } else {
+    stopAurora();
+    setBgTheme('classic');
+  }
+  updateBgThemeSelection();
+}
+
+function startAurora() {
+  stopAurora();
+  var last = performance.now();
+  function tick(now) {
+    if (!document.hidden) {
+      var delta = now - last;
+      auroraHue = (auroraHue + (360 / AURORA_CYCLE_MS) * delta) % 360;
+      applyCustomHue(auroraHue);
+      localStorage.setItem('pvs_bg_hue', String(Math.round(auroraHue)));
+    }
+    last = now;
+    auroraTimer = requestAnimationFrame(tick);
+  }
+  auroraTimer = requestAnimationFrame(tick);
+}
+
+function stopAurora() {
+  if (auroraTimer) { cancelAnimationFrame(auroraTimer); auroraTimer = null; }
+}
+
 function refreshCustomHueIfActive() {
-  if (getBgTheme() !== 'custom') return;
-  applyCustomHue(parseInt(localStorage.getItem('pvs_bg_hue') || '210', 10));
+  var mode = getBgTheme();
+  if (mode !== 'custom' && mode !== 'aurora') return;
+  var hue = mode === 'aurora' ? auroraHue : parseInt(localStorage.getItem('pvs_bg_hue') || '210', 10);
+  applyCustomHue(hue);
 }
 
 function updateBgThemeSelection() {
@@ -263,9 +329,11 @@ function updateBgThemeSelection() {
   });
   var slider = document.getElementById('hueSlider');
   var dot = document.getElementById('hueSliderDot');
-  if (current === 'custom') {
-    var hue = parseInt(localStorage.getItem('pvs_bg_hue') || '210', 10);
-    if (slider) slider.value = hue;
+  var auroraCb = document.getElementById('auroraToggle');
+  if (auroraCb) auroraCb.checked = (current === 'aurora');
+  if (current === 'custom' || current === 'aurora') {
+    var hue = current === 'aurora' ? auroraHue : parseInt(localStorage.getItem('pvs_bg_hue') || '210', 10);
+    if (slider) slider.value = Math.round(hue);
     if (dot) dot.style.background = hslStr(hue, 70, 55);
   }
 }
@@ -285,6 +353,10 @@ document.addEventListener('click', function(e) {
 });
 
 updateBgThemeSelection();
+if (getBgTheme() === 'aurora') {
+  auroraHue = parseInt(localStorage.getItem('pvs_bg_hue') || '0', 10) || 0;
+  startAurora();
+}
 </script>
 
 </body>
