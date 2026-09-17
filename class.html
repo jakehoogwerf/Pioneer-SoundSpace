@@ -2371,6 +2371,7 @@ var studentMode    = localStorage.getItem('pvs_student_mode') !== 'false';
 var focusMode      = localStorage.getItem('pvs_focus_mode') === 'true';
 var classPaused    = false;
 var classLocked    = false;
+var forcePausedActive = false; // true while THIS browser is force-paused by the teacher
 var selectedSongs  = new Set();
 
 var pollTimer      = null;
@@ -3440,15 +3441,31 @@ function updatePauseUI() {
   var text      = document.getElementById('pauseOverlayText');
   var pauseBtn  = document.getElementById('pauseAllBtn');
   var lockBtn   = document.getElementById('lockAllBtn');
+  var shouldBePaused = classPaused || classLocked;
 
-  // Teacher never sees overlay
-  if (overlay) overlay.style.display = (!teacherMode && (classPaused || classLocked)) ? '' : 'none';
+  // The teacher still doesn't see the blocking overlay (they need access
+  // to Teacher Tools to undo it), but their own playback now pauses too.
+  if (overlay) overlay.style.display = (!teacherMode && shouldBePaused) ? '' : 'none';
 
   if (pauseBtn) { pauseBtn.textContent = classPaused ? 'Resume All' : 'Pause All'; pauseBtn.className = 'btn btn-sm ' + (classPaused ? 'btn-gold' : 'btn-danger'); }
   if (lockBtn)  { lockBtn.textContent  = classLocked ? '\ud83d\udd13 Unlock' : '\ud83d\udd12 Lock Playback'; }
 
-  if (classPaused || classLocked) {
-    if (!teacherMode && ytPlayer && isPlaying) { try { ytPlayer.pauseVideo(); } catch(e) {} }
+  // Always act on the actual player, never gated on our own isPlaying
+  // tracking var - pausing an already-paused player is a harmless no-op,
+  // and this avoids missing the pause entirely on a timing race. Applies
+  // to the teacher's own device too now, not just students.
+  if (ytPlayer) {
+    if (shouldBePaused) {
+      forcePausedActive = true;
+      try { ytPlayer.pauseVideo(); } catch(e) {}
+    } else if (forcePausedActive) {
+      // Just lifted - resume playback automatically, symmetric with pause.
+      forcePausedActive = false;
+      if (currentIndex >= 0) { try { ytPlayer.playVideo(); } catch(e) {} }
+    }
+  }
+
+  if (shouldBePaused) {
     if (icon)  icon.textContent  = classLocked ? '\ud83d\udd12' : '||';
     if (title) title.textContent = classLocked ? 'Playback Locked' : 'Playback Paused';
     if (text)  text.textContent  = classLocked ? 'Your teacher has locked playback.' : 'Your teacher has paused playback.';
