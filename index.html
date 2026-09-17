@@ -12,7 +12,32 @@
       var t = (f === 'dark' || f === 'light') ? f : (localStorage.getItem('pvs_theme') || 'light');
       document.documentElement.setAttribute('data-theme', t);
       var bg = localStorage.getItem('pvs_bg_theme');
-      if (bg && bg !== 'classic') document.documentElement.setAttribute('data-bg-theme', bg);
+      if (bg === 'custom') {
+        var hue = parseInt(localStorage.getItem('pvs_bg_hue') || '210', 10) || 0;
+        hue = ((hue % 360) + 360) % 360;
+        var isDark = t === 'dark';
+        function hsl(h,s,l,a){ return a===undefined ? 'hsl('+h+','+s+'%,'+l+'%)' : 'hsla('+h+','+s+'%,'+l+'%,'+a+')'; }
+        var vars = isDark ? {
+          '--bg': hsl(hue,35,8), '--bg-alt': hsl(hue,35,6), '--surface': hsl(hue,30,12),
+          '--surface-raised': hsl(hue,30,14), '--surface-hover': hsl(hue,30,15),
+          '--border': hsl(hue,30,20), '--border-subtle': hsl(hue,30,14),
+          '--input-bg': hsl(hue,30,12), '--input-border': hsl(hue,30,22),
+          '--header-bg': 'linear-gradient(135deg, '+hsl(hue,50,4)+' 0%, '+hsl(hue,50,9)+' 55%, '+hsl(hue,50,12)+' 100%)',
+          '--player-bg': 'linear-gradient(180deg, '+hsl(hue,45,7)+' 0%, '+hsl(hue,45,4)+' 100%)',
+          '--overlay-bg': 'rgba(0,0,0,.88)'
+        } : {
+          '--bg': hsl(hue,45,95), '--bg-alt': hsl(hue,45,91), '--surface': '#FFFFFF',
+          '--surface-raised': '#FFFFFF', '--surface-hover': hsl(hue,45,97),
+          '--border': hsl(hue,40,85), '--border-subtle': hsl(hue,40,90),
+          '--input-bg': '#FFFFFF', '--input-border': hsl(hue,35,80),
+          '--header-bg': 'linear-gradient(135deg, '+hsl(hue,55,18)+' 0%, '+hsl(hue,60,32)+' 55%, '+hsl(hue,65,42)+' 100%)',
+          '--player-bg': 'linear-gradient(180deg, '+hsl(hue,50,14)+' 0%, '+hsl(hue,50,8)+' 100%)',
+          '--overlay-bg': hsl(hue,40,10,0.82)
+        };
+        for (var k in vars) document.documentElement.style.setProperty(k, vars[k]);
+      } else if (bg && bg !== 'classic') {
+        document.documentElement.setAttribute('data-bg-theme', bg);
+      }
     })();
   </script>
 </head>
@@ -48,6 +73,12 @@
         <button class="bg-theme-swatch" data-theme-name="bubblegum" onclick="setBgTheme('bubblegum')" style="--swatch:#A21CAF;">
           <span class="bg-theme-swatch-dot"></span><span class="bg-theme-swatch-label">Bubblegum</span>
         </button>
+        <div class="hue-slider-label">Or make your own:</div>
+        <div class="hue-slider-row">
+          <span class="hue-slider-dot" id="hueSliderDot" style="background:hsl(210,70%,55%);"></span>
+          <input type="range" min="0" max="360" step="1" class="hue-slider" id="hueSlider" value="210"
+                 oninput="setCustomHue(this.value)" aria-label="Custom background colour">
+        </div>
       </div>
     </div>
     <button class="btn btn-ghost theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
@@ -118,6 +149,7 @@ function toggleTheme() {
   var forced = localStorage.getItem('pvs_force_theme');
   if (forced && forced !== 'auto') localStorage.setItem('pvs_force_theme', next);
   updateThemeButton();
+  refreshCustomHueIfActive();
   setTimeout(function(){ document.body.classList.remove('theme-transition'); }, 350);
 }
 function updateThemeButton() {
@@ -128,9 +160,12 @@ updateThemeButton();
 
 // ── Background Theme Picker (student-facing, per-browser) ────
 var BG_THEME_NAMES = ['classic', 'ocean', 'sunset', 'forest', 'bubblegum'];
+var CUSTOM_HUE_VARS = ['--bg','--bg-alt','--surface','--surface-raised','--surface-hover',
+  '--border','--border-subtle','--input-bg','--input-border','--header-bg','--player-bg','--overlay-bg'];
 
 function getBgTheme() {
   var saved = localStorage.getItem('pvs_bg_theme');
+  if (saved === 'custom') return 'custom';
   return BG_THEME_NAMES.indexOf(saved) >= 0 ? saved : 'classic';
 }
 
@@ -147,9 +182,78 @@ function applyBgTheme(name) {
 function setBgTheme(name) {
   if (BG_THEME_NAMES.indexOf(name) < 0) name = 'classic';
   localStorage.setItem('pvs_bg_theme', name);
+  localStorage.removeItem('pvs_bg_hue');
+  clearCustomHueVars();
   applyBgTheme(name);
   updateBgThemeSelection();
   toggleBgThemeMenu(false);
+}
+
+function hslStr(h, s, l, a) {
+  h = ((h % 360) + 360) % 360;
+  return a === undefined ? 'hsl(' + h + ',' + s + '%,' + l + '%)' : 'hsla(' + h + ',' + s + '%,' + l + '%,' + a + ')';
+}
+
+function computeCustomHueVars(hue, isDark) {
+  if (isDark) {
+    return {
+      '--bg':             hslStr(hue, 35, 8),
+      '--bg-alt':         hslStr(hue, 35, 6),
+      '--surface':        hslStr(hue, 30, 12),
+      '--surface-raised': hslStr(hue, 30, 14),
+      '--surface-hover':  hslStr(hue, 30, 15),
+      '--border':         hslStr(hue, 30, 20),
+      '--border-subtle':  hslStr(hue, 30, 14),
+      '--input-bg':       hslStr(hue, 30, 12),
+      '--input-border':   hslStr(hue, 30, 22),
+      '--header-bg':  'linear-gradient(135deg, ' + hslStr(hue,50,4) + ' 0%, ' + hslStr(hue,50,9) + ' 55%, ' + hslStr(hue,50,12) + ' 100%)',
+      '--player-bg':  'linear-gradient(180deg, ' + hslStr(hue,45,7) + ' 0%, ' + hslStr(hue,45,4) + ' 100%)',
+      '--overlay-bg': 'rgba(0,0,0,.88)'
+    };
+  }
+  return {
+    '--bg':             hslStr(hue, 45, 95),
+    '--bg-alt':         hslStr(hue, 45, 91),
+    '--surface':        '#FFFFFF',
+    '--surface-raised': '#FFFFFF',
+    '--surface-hover':  hslStr(hue, 45, 97),
+    '--border':         hslStr(hue, 40, 85),
+    '--border-subtle':  hslStr(hue, 40, 90),
+    '--input-bg':       '#FFFFFF',
+    '--input-border':   hslStr(hue, 35, 80),
+    '--header-bg':  'linear-gradient(135deg, ' + hslStr(hue,55,18) + ' 0%, ' + hslStr(hue,60,32) + ' 55%, ' + hslStr(hue,65,42) + ' 100%)',
+    '--player-bg':  'linear-gradient(180deg, ' + hslStr(hue,50,14) + ' 0%, ' + hslStr(hue,50,8) + ' 100%)',
+    '--overlay-bg': hslStr(hue, 40, 10, 0.82)
+  };
+}
+
+function clearCustomHueVars() {
+  var root = document.documentElement.style;
+  CUSTOM_HUE_VARS.forEach(function(v) { root.removeProperty(v); });
+}
+
+function applyCustomHue(hue) {
+  var vars = computeCustomHueVars(hue, getTheme() === 'dark');
+  var root = document.documentElement.style;
+  Object.keys(vars).forEach(function(k) { root.setProperty(k, vars[k]); });
+  var dot = document.getElementById('hueSliderDot');
+  if (dot) dot.style.background = hslStr(hue, 70, 55);
+}
+
+function setCustomHue(hue) {
+  hue = parseInt(hue, 10) || 0;
+  document.body.classList.add('theme-transition');
+  document.documentElement.removeAttribute('data-bg-theme');
+  applyCustomHue(hue);
+  localStorage.setItem('pvs_bg_theme', 'custom');
+  localStorage.setItem('pvs_bg_hue', String(hue));
+  updateBgThemeSelection();
+  setTimeout(function() { document.body.classList.remove('theme-transition'); }, 350);
+}
+
+function refreshCustomHueIfActive() {
+  if (getBgTheme() !== 'custom') return;
+  applyCustomHue(parseInt(localStorage.getItem('pvs_bg_hue') || '210', 10));
 }
 
 function updateBgThemeSelection() {
@@ -157,6 +261,13 @@ function updateBgThemeSelection() {
   document.querySelectorAll('.bg-theme-swatch').forEach(function(btn) {
     btn.classList.toggle('is-selected', btn.getAttribute('data-theme-name') === current);
   });
+  var slider = document.getElementById('hueSlider');
+  var dot = document.getElementById('hueSliderDot');
+  if (current === 'custom') {
+    var hue = parseInt(localStorage.getItem('pvs_bg_hue') || '210', 10);
+    if (slider) slider.value = hue;
+    if (dot) dot.style.background = hslStr(hue, 70, 55);
+  }
 }
 
 function toggleBgThemeMenu(force) {
