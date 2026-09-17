@@ -1,5 +1,7 @@
 import type { Config, Context } from '@netlify/functions'
-import { getStore } from '@netlify/blobs'
+import { supabaseDb } from '../../db/supabase.js'
+import { classPlaylists, classPlaylistHistory } from '../../db/schema.js'
+import { eq } from 'drizzle-orm'
 
 const ALLOWED_CLASSES = new Set([
   'kangaroos',
@@ -43,11 +45,14 @@ export default async (req: Request, context: Context) => {
     return new Response('Invalid class', { status: 400 })
   }
 
-  const store = getStore({ name: 'class-playlists', consistency: 'strong' })
-
   if (req.method === 'GET') {
-    const data = await store.get(className, { type: 'json' })
-    return Response.json(Array.isArray(data) ? data : [])
+    const rows = await supabaseDb
+      .select()
+      .from(classPlaylists)
+      .where(eq(classPlaylists.className, className))
+      .limit(1)
+    const songs = rows[0]?.songs
+    return Response.json(Array.isArray(songs) ? songs : [])
   }
 
   if (req.method === 'PUT' || req.method === 'POST') {
@@ -58,7 +63,44 @@ export default async (req: Request, context: Context) => {
       return new Response('Invalid JSON', { status: 400 })
     }
     const cleaned = clean(body)
-    await store.setJSON(className, cleaned)
+
+    // Safety net: never let a save that resolves to an empty playlist
+    // silently wipe an existing, non-empty one. This is exactly how songs
+    // got lost before - a stale/broken client saved an empty array over
+    // real data with no warning. The admin "Clear Current Playlist" button
+    // passes ?confirm=true to bypass this deliberately.
+    const confirmed = new URL(req.url).searchParams.get('confirm') === 'true'
+    if (cleaned.length === 0 && !confirmed) {
+      const existingRows = await supabaseDb
+        .select()
+        .from(classPlaylists)
+        .where(eq(classPlaylists.className, className))
+        .limit(1)
+      const existingSongs = existingRows[0]?.songs
+      if (Array.isArray(existingSongs) && existingSongs.length > 0) {
+        return new Response(
+          'Refused: this would silently replace an existing playlist with an empty one. ' +
+          'Use the admin "Clear Current Playlist" button to do this on purpose.',
+          { status: 409 }
+        )
+      }
+    }
+
+    // Snapshot BEFORE it becomes the live value, so every save is
+    // recoverable later via /api/playlist-history/:class.
+    await supabaseDb.insert(classPlaylistHistory).values({
+      className,
+      songs: cleaned,
+    })
+
+    await supabaseDb
+      .insert(classPlaylists)
+      .values({ className, songs: cleaned, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: classPlaylists.className,
+        set: { songs: cleaned, updatedAt: new Date() },
+      })
+
     return Response.json(cleaned)
   }
 
