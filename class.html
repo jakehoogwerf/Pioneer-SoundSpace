@@ -1634,6 +1634,7 @@ body.has-player-bar {
 .focus-mode .panel-head-actions { display: none; }
 .focus-mode #recentPanel { display: none !important; }
 .focus-mode #likedPanel { display: none !important; }
+.focus-mode #reactionsPanel { display: none !important; }
 .focus-mode .admin-trigger { display: none; }
 
 /* ═══════════════════════════════════════════════
@@ -1702,6 +1703,54 @@ body.has-player-bar {
   transition: opacity .2s;
 }
 #pauseTeacherBtn:hover { opacity: 1; }
+
+/* ═══════════════════════════════════════════════
+   Live Reactions
+   ═══════════════════════════════════════════════ */
+.reactions-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.reaction-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--surface-hover);
+  cursor: pointer;
+  font-family: 'Barlow', sans-serif;
+  transition: background .15s, border-color .15s, transform .08s;
+  overflow: visible;
+}
+.reaction-btn:hover { border-color: var(--accent); background: var(--gold-dim); }
+.reaction-btn:active { transform: scale(.94); }
+.reaction-emoji { font-size: 18px; line-height: 1; }
+.reaction-count {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  min-width: 14px;
+  text-align: left;
+}
+.reaction-burst {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  font-size: 20px;
+  line-height: 1;
+  pointer-events: none;
+  animation: reaction-float .9s ease-out forwards;
+}
+@keyframes reaction-float {
+  0%   { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translate(-50%, -46px) scale(1.5) rotate(12deg); }
+}
 
 /* ═══════════════════════════════════════════════
    Most Played
@@ -2142,10 +2191,10 @@ body.has-player-bar {
     <div id="recentlyPlayed" class="recent-list"></div>
   </div>
 
-  <!-- Most Played -->
+  <!-- Class Leaderboard (all-time most played, visible to everyone) -->
   <div class="panel" id="mostPlayedPanel" style="display:none;">
     <div class="panel-head">
-      <h3>&#127942; Most Played</h3>
+      <h3>&#127942; Class Leaderboard</h3>
     </div>
     <div id="mostPlayedList" class="most-played-list"></div>
   </div>
@@ -2154,6 +2203,24 @@ body.has-player-bar {
   <div class="panel" id="likedPanel" style="display:none;">
     <h3>&#129293; My Liked Songs</h3>
     <div id="likedSongsList" class="recent-list"></div>
+  </div>
+
+  <!-- Live Reactions on the current song -->
+  <div class="panel" id="reactionsPanel" style="display:none;">
+    <div class="reactions-row">
+      <button class="reaction-btn" data-emoji="fire" onclick="sendReaction('fire')">
+        <span class="reaction-emoji">&#128293;</span><span class="reaction-count" id="reactCount_fire">0</span>
+      </button>
+      <button class="reaction-btn" data-emoji="heart" onclick="sendReaction('heart')">
+        <span class="reaction-emoji">&#128525;</span><span class="reaction-count" id="reactCount_heart">0</span>
+      </button>
+      <button class="reaction-btn" data-emoji="laugh" onclick="sendReaction('laugh')">
+        <span class="reaction-emoji">&#128514;</span><span class="reaction-count" id="reactCount_laugh">0</span>
+      </button>
+      <button class="reaction-btn" data-emoji="sleepy" onclick="sendReaction('sleepy')">
+        <span class="reaction-emoji">&#128564;</span><span class="reaction-count" id="reactCount_sleepy">0</span>
+      </button>
+    </div>
   </div>
 
   <!-- Playlist -->
@@ -2352,6 +2419,7 @@ var apiUrl     = '/api/playlist/' + encodeURIComponent(classParam);
 var pauseApiUrl= '/api/pstate/' + encodeURIComponent(classParam);
 var banApiUrl  = '/api/banned/'   + encodeURIComponent(classParam);
 var reqApiUrl  = '/api/requests/' + encodeURIComponent(classParam);
+var reactionsApiUrl = '/api/reactions/' + encodeURIComponent(classParam);
 
 // ── Class colour themes ──────────────────────────────
 var CLASS_COLOURS = {
@@ -3042,6 +3110,66 @@ function applyNowPlayingGlow(rgbStr) {
   if (bar) { bar.style.setProperty('--np-glow-color', glowColor); bar.classList.add('has-glow'); }
 }
 
+// ── Live Reactions ────────────────────────────────────
+var REACTION_EMOJIS = { fire: '\ud83d\udd25', heart: '\ud83d\ude0d', laugh: '\ud83d\ude02', sleepy: '\ud83d\ude34' };
+var lastReactionState = { songId: '', counts: {} };
+
+function currentSongId() {
+  return (currentIndex >= 0 && playlist[currentIndex]) ? playlist[currentIndex].id : null;
+}
+
+async function sendReaction(emoji) {
+  var songId = currentSongId();
+  if (!songId) return;
+  spawnReactionBurst(emoji);
+  // Optimistic local bump so it feels instant, corrected by the server's
+  // real count on the next poll (or immediately below).
+  if (lastReactionState.songId === songId) {
+    lastReactionState.counts[emoji] = (lastReactionState.counts[emoji] || 0) + 1;
+    renderReactionCounts();
+  }
+  try {
+    var res = await fetch(reactionsApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ songId: songId, emoji: emoji })
+    });
+    if (res.ok) { lastReactionState = await res.json(); renderReactionCounts(); }
+  } catch (e) {}
+}
+
+async function pollReactions() {
+  var panel = document.getElementById('reactionsPanel');
+  var songId = currentSongId();
+  if (!songId) { if (panel) panel.style.display = 'none'; return; }
+  if (panel) panel.style.display = '';
+  try {
+    var res = await fetch(reactionsApiUrl, { cache: 'no-store' });
+    if (!res.ok) return;
+    lastReactionState = await res.json();
+    renderReactionCounts();
+  } catch (e) {}
+}
+
+function renderReactionCounts() {
+  var songId = currentSongId();
+  var counts = (songId && lastReactionState.songId === songId) ? (lastReactionState.counts || {}) : {};
+  Object.keys(REACTION_EMOJIS).forEach(function(key) {
+    var el = document.getElementById('reactCount_' + key);
+    if (el) el.textContent = counts[key] || 0;
+  });
+}
+
+function spawnReactionBurst(emoji) {
+  var btn = document.querySelector('.reaction-btn[data-emoji="' + emoji + '"]');
+  if (!btn) return;
+  var span = document.createElement('span');
+  span.className = 'reaction-burst';
+  span.textContent = REACTION_EMOJIS[emoji];
+  btn.appendChild(span);
+  span.addEventListener('animationend', function() { span.remove(); });
+}
+
 function updateNowPlaying() {
   var el    = document.getElementById('nowPlaying');
   var thumb = document.getElementById('playerBarThumb');
@@ -3059,6 +3187,7 @@ function updateNowPlaying() {
     setTimeDisplay(0, 0);
     applyNowPlayingGlow(null);
   }
+  pollReactions();
 }
 
 function updatePlayBtn() {
@@ -4077,6 +4206,10 @@ async function init() {
   // Most played
   renderMostPlayed();
   setInterval(renderMostPlayed, 30000);
+
+  // Live reactions - refresh every few seconds so everyone sees taps
+  // from other students without needing a song change to trigger it
+  setInterval(pollReactions, 4000);
 
   // Request queue - poll every 5s and update badge
   setInterval(function() {
