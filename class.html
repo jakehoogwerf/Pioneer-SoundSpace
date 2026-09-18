@@ -900,6 +900,31 @@ body.has-player-bar {
   opacity: 1;
 }
 
+.song-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.song-row-like {
+  background: transparent;
+  border: none;
+  font-size: 15px;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .15s cubic-bezier(.4,0,.2,1), background .15s;
+  position: relative;
+  overflow: hidden;
+  --ripple-color: rgba(27,58,92,.16);
+}
+[data-theme="dark"] .song-row-like { --ripple-color: rgba(255,255,255,.14); }
+.song-row-like:hover { background: var(--danger-bg); }
+.song-row-like:active { transform: scale(1.2); }
+.song-row-like.is-liked:active { transform: scale(1.3); }
+
 .empty-state {
   text-align: center;
   padding: 36px 16px;
@@ -1608,6 +1633,7 @@ body.has-player-bar {
 .focus-mode .back-link { display: none; }
 .focus-mode .panel-head-actions { display: none; }
 .focus-mode #recentPanel { display: none !important; }
+.focus-mode #likedPanel { display: none !important; }
 .focus-mode .admin-trigger { display: none; }
 
 /* ═══════════════════════════════════════════════
@@ -2124,11 +2150,18 @@ body.has-player-bar {
     <div id="mostPlayedList" class="most-played-list"></div>
   </div>
 
+  <!-- My Liked Songs -->
+  <div class="panel" id="likedPanel" style="display:none;">
+    <h3>&#129293; My Liked Songs</h3>
+    <div id="likedSongsList" class="recent-list"></div>
+  </div>
+
   <!-- Playlist -->
   <div class="panel">
     <div class="panel-head">
       <h3>Playlist</h3>
       <div class="panel-head-actions">
+        <button class="btn btn-outline btn-sm" id="likedModeBtn" onclick="toggleLikedMode()">&#129293; My Likes: Off</button>
         <button class="btn btn-outline btn-sm" id="shuffleBtn" onclick="toggleShuffle()">Shuffle: Off</button>
         <button class="btn btn-outline btn-sm" id="teacherUnlockBtn" onclick="unlockTeacher()">Teacher Tools</button>
       </div>
@@ -2364,6 +2397,8 @@ var shuffle        = false;
 var repeatMode     = localStorage.getItem('pvs_repeat_mode') || 'none';
 var currentVolume  = parseInt(localStorage.getItem('pvs_volume') || '80', 10);
 var isMuted        = false;
+var likedIds       = loadLikedIds();
+var likedModeOn    = localStorage.getItem('pvs_liked_mode_' + classParam) === 'true';
 
 var teacherMode    = sessionStorage.getItem('pvs_teacher_' + classParam) === 'true';
 var studentMode    = localStorage.getItem('pvs_student_mode') !== 'false';
@@ -2626,7 +2661,7 @@ function spawnRipple(el, clientX, clientY) {
 }
 
 document.addEventListener('pointerdown', function(e) {
-  var el = e.target.closest('.btn, .song-row-remove, .admin-close, .player-bar-btn, .bg-theme-swatch');
+  var el = e.target.closest('.btn, .song-row-remove, .song-row-like, .admin-close, .player-bar-btn, .bg-theme-swatch');
   if (!el || el.disabled) return;
   spawnRipple(el, e.clientX, e.clientY);
 });
@@ -2750,24 +2785,111 @@ function togglePlay() {
   try { isPlaying ? ytPlayer.pauseVideo() : ytPlayer.playVideo(); } catch(e) {}
 }
 
+// ── Liked Songs (student-facing, per-browser, per-class) ────
+function getLikedKey() { return 'pvs_liked_' + classParam; }
+
+function loadLikedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(getLikedKey()) || '[]')); }
+  catch (e) { return new Set(); }
+}
+
+function saveLikedIds() {
+  localStorage.setItem(getLikedKey(), JSON.stringify(Array.from(likedIds)));
+}
+
+function toggleLike(id) {
+  if (likedIds.has(id)) likedIds.delete(id); else likedIds.add(id);
+  saveLikedIds();
+  render();
+  renderLikedPanel();
+}
+
+// Returns the indices next()/prev()/shuffle should be choosing from - all
+// of them normally, or just the student's liked subset when "My Likes"
+// mode is on.
+function getPlaybackPool() {
+  var all = playlist.map(function(_, i) { return i; });
+  if (!likedModeOn) return all;
+  return all.filter(function(i) { return likedIds.has(playlist[i].id); });
+}
+
+function setLikedMode(on) {
+  if (on) {
+    var hasAnyLiked = playlist.some(function(s) { return likedIds.has(s.id); });
+    if (!hasAnyLiked) {
+      alert('You haven\'t liked any songs yet - tap the \ud83e\udd0d on a song first!');
+      on = false;
+    }
+  }
+  likedModeOn = on;
+  localStorage.setItem('pvs_liked_mode_' + classParam, on ? 'true' : 'false');
+  updateLikedModeBtn();
+  if (likedModeOn) {
+    var pool = getPlaybackPool();
+    if (pool.length && pool.indexOf(currentIndex) === -1) {
+      play(shuffle ? pool[Math.floor(Math.random() * pool.length)] : pool[0]);
+    }
+  }
+}
+
+function toggleLikedMode() { setLikedMode(!likedModeOn); }
+
+function updateLikedModeBtn() {
+  var btn = document.getElementById('likedModeBtn');
+  if (!btn) return;
+  btn.innerHTML = likedModeOn ? '\u2764\ufe0f My Likes: On' : '\ud83e\udd0d My Likes: Off';
+  btn.className = 'btn btn-sm ' + (likedModeOn ? 'btn-gold' : 'btn-outline');
+}
+
+function renderLikedPanel() {
+  var panel = document.getElementById('likedPanel');
+  var wrap  = document.getElementById('likedSongsList');
+  if (!panel || !wrap) return;
+
+  // A song a student liked earlier might have since been removed by the
+  // teacher - quietly drop it from their liked list rather than showing
+  // a broken entry.
+  var currentIds = new Set(playlist.map(function(s) { return s.id; }));
+  var changed = false;
+  likedIds.forEach(function(id) { if (!currentIds.has(id)) { likedIds.delete(id); changed = true; } });
+  if (changed) saveLikedIds();
+
+  if (!likedIds.size) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  var likedSongs = playlist.filter(function(s) { return likedIds.has(s.id); });
+  wrap.innerHTML = likedSongs.map(function(s) {
+    return '<div class="recent-item" onclick="playById(' + JSON.stringify(s.id) + ')">' +
+      '<div class="recent-item-thumb"><img src="' + thumbUrl(s.id) + '" alt="" loading="lazy"></div>' +
+      '<div class="recent-item-title">' + esc(s.title) + '</div></div>';
+  }).join('');
+}
+
 function next() {
   if (!playlist.length) return;
+  var pool = getPlaybackPool();
+  if (!pool.length) return;
   var ni;
-  if (shuffle && playlist.length > 1) {
-    do { ni = Math.floor(Math.random() * playlist.length); } while (ni === currentIndex);
+  if (shuffle && pool.length > 1) {
+    do { ni = pool[Math.floor(Math.random() * pool.length)]; } while (ni === currentIndex);
   } else {
-    ni = currentIndex + 1;
-    if (ni >= playlist.length) {
+    var pos = pool.indexOf(currentIndex);
+    var nextPos = pos + 1;
+    if (nextPos >= pool.length) {
       if (repeatMode === 'none') { isPlaying = false; updatePlayBtn(); stopProgressTimer(); return; }
-      ni = 0;
+      nextPos = 0;
     }
+    ni = pool[nextPos];
   }
   play(ni);
 }
 
 function prev() {
   if (!playlist.length) return;
-  play(currentIndex <= 0 ? playlist.length - 1 : currentIndex - 1);
+  var pool = getPlaybackPool();
+  if (!pool.length) return;
+  var pos = pool.indexOf(currentIndex);
+  var prevPos = pos <= 0 ? pool.length - 1 : pos - 1;
+  play(pool[prevPos]);
 }
 
 function toggleShuffle() {
@@ -2983,6 +3105,7 @@ function render() {
     row.setAttribute('tabindex', '0');
 
     var showRemove = teacherMode && !focusMode;
+    var liked = likedIds.has(song.id);
 
     row.innerHTML =
       '<div class="song-row-thumb">' +
@@ -2993,13 +3116,25 @@ function render() {
         '<div class="song-row-title">' + esc(song.title || 'Loading...') + '</div>' +
         (isActive ? '<div class="song-row-status">Now playing</div><div class="song-row-wave"><i></i><i></i><i></i><i></i></div>' : '') +
       '</div>' +
-      (showRemove ? '<button class="song-row-remove" title="Remove">&#10005;</button>' : '');
+      '<div class="song-row-actions">' +
+        '<button class="song-row-like' + (liked ? ' is-liked' : '') + '" title="' + (liked ? 'Unlike' : 'Like') + '">' + (liked ? '&#10084;&#65039;' : '&#129293;') + '</button>' +
+        (showRemove ? '<button class="song-row-remove" title="Remove">&#10005;</button>' : '') +
+      '</div>';
 
     // Click to play
     row.addEventListener('click', function(e) {
-      if (e.target.closest('.song-row-remove') || e.target.closest('.song-row-checkbox')) return;
+      if (e.target.closest('.song-row-remove') || e.target.closest('.song-row-like') || e.target.closest('.song-row-checkbox')) return;
       play(i);
     });
+
+    // Like button
+    var likeBtn = row.querySelector('.song-row-like');
+    if (likeBtn) {
+      likeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleLike(song.id);
+      });
+    }
 
     // Remove button
     var removeBtn = row.querySelector('.song-row-remove');
@@ -3181,7 +3316,7 @@ async function pollServer() {
           if (playlist.length > 0) setTimeout(function() { play(Math.min(oldIdx, playlist.length-1)); }, 300);
         }
       }
-      render(); updateNowPlaying(); updatePlayBtn();
+      render(); updateNowPlaying(); updatePlayBtn(); renderLikedPanel();
     }
   } catch(e) {}
 }
@@ -3892,6 +4027,9 @@ async function init() {
   // Repeat
   updateRepeatBtn();
 
+  // My Liked Songs - restore the "My Likes" toggle's on/off state
+  updateLikedModeBtn();
+
   // Apply modes
   applyModes();
 
@@ -3920,6 +4058,7 @@ async function init() {
   updatePlayBtn();
   updatePasteBtn();
   renderRecent();
+  renderLikedPanel();
 
   // Backfill any missing titles
   backfillTitles();
