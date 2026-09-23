@@ -1714,7 +1714,11 @@ body.has-player-bar {
 .bg-emoji-layer {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  /* Negative z-index paints behind normal (position:static) content like
+     the panels, while still painting above the plain page background -
+     the opposite of the old z-index:90, which incorrectly floated on
+     top of everything. */
+  z-index: -1;
   overflow: hidden;
   pointer-events: none;
   opacity: 0;
@@ -1731,8 +1735,8 @@ body.has-player-bar {
 }
 @keyframes bg-emoji-float {
   0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-  8%   { opacity: .18; }
-  92%  { opacity: .18; }
+  8%   { opacity: .55; }
+  92%  { opacity: .55; }
   100% { transform: translate(var(--drift, 0px), -125vh) rotate(var(--rot, 0deg)); opacity: 0; }
 }
 .focus-mode .bg-emoji-layer { display: none !important; }
