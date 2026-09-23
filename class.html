@@ -3231,7 +3231,21 @@ function updateBgEmojiForSong(songId) {
 function bgTick(now) {
   requestAnimationFrame(bgTick);
   if (!bgCtx || !bgCanvas || document.hidden) return;
-  if (now - bgLastFrameTime < BG_FRAME_MS) return;
+  if (!bgLastFrameTime) bgLastFrameTime = now;
+  var elapsed = now - bgLastFrameTime;
+  if (elapsed < BG_FRAME_MS) return;
+
+  // If the tab was backgrounded/throttled and a huge gap has passed,
+  // don't try to "catch up" with one giant jump - just resync quietly.
+  if (elapsed > 250) { bgLastFrameTime = now; return; }
+
+  // Scale every increment by how much real time actually passed (relative
+  // to our target frame interval) rather than assuming a fixed amount per
+  // executed frame. Without this, any variance in frame timing - the blur
+  // render cost, GC pauses, browser scheduling - reads as stutter, since a
+  // late frame still only moved the "standard" distance and then has to
+  // visually catch up on the next one.
+  var dtScale = elapsed / BG_FRAME_MS;
   bgLastFrameTime = now;
 
   var w = window.innerWidth, h = window.innerHeight;
@@ -3246,19 +3260,33 @@ function bgTick(now) {
     var p = bgParticles[i];
 
     // Ease toward its own gentle base drift...
-    p.vy += (p.baseVy - p.vy) * 0.02;
-    p.vx += (p.drift - p.vx) * 0.02;
+    p.vy += (p.baseVy - p.vy) * 0.02 * dtScale;
+    p.vx += (p.drift - p.vx) * 0.02 * dtScale;
 
     // ...but the cursor pushes it away when nearby.
     var dx = p.x - bgCursor.x, dy = p.y - bgCursor.y;
     var dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < BG_REPEL_RADIUS && dist > 0.01) {
       var force = (1 - dist / BG_REPEL_RADIUS) * BG_REPEL_STRENGTH;
-      p.vx += (dx / dist) * force;
-      p.vy += (dy / dist) * force;
+      p.vx += (dx / dist) * force * dtScale;
+      p.vy += (dy / dist) * force * dtScale;
     }
 
-    p.x += p.vx; p.y += p.vy; p.rot += p.rotSpeed;
+    // Repulsion adds to velocity every single frame with no cap of its
+    // own - if the cursor lingers near a particle for several frames in a
+    // row (even just holding still), that velocity keeps stacking with
+    // only weak damping pulling it back, and it can build up to a sudden
+    // burst of speed. Capping the total speed here is what actually stops
+    // that - without it, particles can occasionally rocket across the
+    // screen, which reads as glitching rather than smooth motion.
+    var speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    var maxSpeed = 6;
+    if (speed > maxSpeed) {
+      p.vx = (p.vx / speed) * maxSpeed;
+      p.vy = (p.vy / speed) * maxSpeed;
+    }
+
+    p.x += p.vx * dtScale; p.y += p.vy * dtScale; p.rot += p.rotSpeed * dtScale;
 
     if (p.y < -60) { p.y = h + 40; p.x = Math.random() * w; p.vx = 0; p.vy = 0; }
     if (p.x < -60) p.x = w + 60;
