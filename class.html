@@ -1705,41 +1705,27 @@ body.has-player-bar {
 #pauseTeacherBtn:hover { opacity: 1; }
 
 /* ═══════════════════════════════════════════════
-   Animated Background Emojis — a per-song "vibe" of
-   floating emojis, deterministically chosen from the
-   song's id so the same song always looks the same.
-   Purely decorative: fixed full-viewport, low opacity,
-   pointer-events:none so it never blocks interaction.
+   Animated Background Emojis — a canvas-based particle
+   field: one emoji type per song (deterministic from the
+   song's id, so the same song always looks the same),
+   hundreds of instances, and the cursor gently repels
+   nearby ones. Canvas instead of DOM nodes because
+   hundreds of individually-animated elements reacting to
+   the cursor every frame would be far too heavy - this is
+   one element, drawn and moved in a single loop.
+   Sits behind normal content (negative z-index paints
+   before position:static siblings like the panels, but
+   still above the plain page background), and
+   pointer-events:none so it never blocks clicks.
    ═══════════════════════════════════════════════ */
-.bg-emoji-layer {
+.bg-emoji-canvas {
   position: fixed;
   inset: 0;
-  /* Negative z-index paints behind normal (position:static) content like
-     the panels, while still painting above the plain page background -
-     the opposite of the old z-index:90, which incorrectly floated on
-     top of everything. */
   z-index: -1;
-  overflow: hidden;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity .5s ease;
+  display: block;
 }
-.bg-emoji {
-  position: absolute;
-  bottom: -12%;
-  line-height: 1;
-  animation-name: bg-emoji-float;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  will-change: transform, opacity;
-}
-@keyframes bg-emoji-float {
-  0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-  8%   { opacity: .55; }
-  92%  { opacity: .55; }
-  100% { transform: translate(var(--drift, 0px), -125vh) rotate(var(--rot, 0deg)); opacity: 0; }
-}
-.focus-mode .bg-emoji-layer { display: none !important; }
+.focus-mode .bg-emoji-canvas { display: none !important; }
 
 /* ═══════════════════════════════════════════════
    Live Reactions
@@ -2131,7 +2117,7 @@ body.has-player-bar {
 </head>
 <body class="has-player-bar">
 
-<div id="bgEmojiLayer" class="bg-emoji-layer" aria-hidden="true"></div>
+<canvas id="bgEmojiCanvas" class="bg-emoji-canvas" aria-hidden="true"></canvas>
 
 <header class="site-header">
   <div class="header-left">
@@ -3149,18 +3135,25 @@ function applyNowPlayingGlow(rgbStr) {
   if (bar) { bar.style.setProperty('--np-glow-color', glowColor); bar.classList.add('has-glow'); }
 }
 
-// ── Animated Background Emojis ────────────────────────
+// ── Animated Background Emojis (canvas particle field) ──
+// One emoji type per song (e.g. all fire for one song, all balloons for
+// the next), deterministically chosen from the song's id so the same
+// song always shows the same emoji. Hundreds of instances drift slowly
+// upward and gently wrap/recycle; the cursor repels any nearby ones.
 var BG_EMOJI_POOL = [
-  '\ud83c\udfb5', '\ud83c\udfb6', '\ud83c\udfb8', '\ud83c\udfa4', '\ud83e\udd41', '\ud83c\udfa7',
-  '\u2728', '\ud83c\udf1f', '\ud83d\udd25', '\ud83d\udcab', '\ud83c\udfb7', '\ud83c\udfb9',
-  '\ud83c\udfba', '\ud83c\udfbb', '\ud83c\udf08', '\ud83d\udc9c', '\ud83d\udc99', '\ud83d\udc9a',
-  '\ud83e\udde1', '\u2b50', '\ud83c\udf89', '\ud83c\udf8a', '\ud83d\udd7a', '\ud83d\udc83',
-  '\ud83e\udd8b', '\ud83c\udf38', '\u2600\ufe0f', '\ud83c\udf19', '\u26a1', '\ud83c\udf08'
+  '\ud83d\udd25', '\ud83c\udf88', '\u2728', '\ud83c\udf1f', '\u2b50', '\ud83d\udc99',
+  '\ud83d\udc9c', '\ud83c\udf89', '\ud83c\udf08', '\ud83c\udf38', '\ud83c\udfb5', '\u26a1',
+  '\ud83e\udd8b', '\ud83c\udf19', '\u2744\ufe0f', '\ud83c\udf4d'
 ];
+var BG_PARTICLE_COUNT = 200;
+var BG_REPEL_RADIUS   = 130;
+var BG_REPEL_STRENGTH = 3.2;
+var BG_FRAME_MS       = 33; // ~30fps - plenty smooth for slow drifting particles, kinder on CPU
+var BG_BLUR_PX        = 1.6; // soft/glowing look instead of crisp clip-art emoji
 
 // Deterministic hash -> seeded PRNG, so the same song id always produces
-// the exact same emoji set and layout for every viewer, every time -
-// rather than a jarring random reshuffle on every single play.
+// the exact same emoji choice and particle layout for every viewer,
+// every time - rather than a jarring random reshuffle on every play.
 function hashStringToSeed(str) {
   var h = 2166136261;
   for (var i = 0; i < str.length; i++) {
@@ -3178,43 +3171,107 @@ function seededRandom(seed) {
   };
 }
 
-var lastBgEmojiSongId = null;
+var bgCanvas = null, bgCtx = null;
+var bgParticles = [];
+var bgCursor = { x: -9999, y: -9999 };
+var bgLastSongId = null;
+var bgLastFrameTime = 0;
 
-function renderBackgroundEmojis(songId) {
-  var layer = document.getElementById('bgEmojiLayer');
-  if (!layer) return;
-  if (songId === lastBgEmojiSongId) return;
-  lastBgEmojiSongId = songId;
+function initBgCanvas() {
+  bgCanvas = document.getElementById('bgEmojiCanvas');
+  if (!bgCanvas) return;
+  bgCtx = bgCanvas.getContext('2d');
+  resizeBgCanvas();
+  window.addEventListener('resize', resizeBgCanvas);
+  window.addEventListener('mousemove', function(e) { bgCursor.x = e.clientX; bgCursor.y = e.clientY; });
+  window.addEventListener('mouseleave', function() { bgCursor.x = -9999; bgCursor.y = -9999; });
+  window.addEventListener('touchmove', function(e) {
+    if (e.touches && e.touches[0]) { bgCursor.x = e.touches[0].clientX; bgCursor.y = e.touches[0].clientY; }
+  }, { passive: true });
+  requestAnimationFrame(bgTick);
+}
 
-  if (!songId) {
-    layer.style.opacity = '0';
-    setTimeout(function() { layer.innerHTML = ''; }, 500);
-    return;
-  }
+function resizeBgCanvas() {
+  if (!bgCanvas || !bgCtx) return;
+  var dpr = window.devicePixelRatio || 1;
+  bgCanvas.width  = window.innerWidth * dpr;
+  bgCanvas.height = window.innerHeight * dpr;
+  bgCanvas.style.width  = window.innerWidth + 'px';
+  bgCanvas.style.height = window.innerHeight + 'px';
+  bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
 
-  layer.style.opacity = '0';
-  setTimeout(function() {
-    if (songId !== lastBgEmojiSongId) return; // song changed again before this fired
-    var rand = seededRandom(hashStringToSeed(songId));
-    var pool = BG_EMOJI_POOL.slice();
-    var count = 7;
-    var html = '';
-    for (var i = 0; i < count && pool.length; i++) {
-      var emoji = pool.splice(Math.floor(rand() * pool.length), 1)[0];
-      var left = Math.round(rand() * 100);
-      var size = Math.round(34 + rand() * 58);      // 34-92px
-      var duration = (15 + rand() * 12).toFixed(1);  // 15-27s per loop
-      var delay = (-rand() * duration).toFixed(1);   // stagger, already mid-flight on load
-      var drift = Math.round(-50 + rand() * 100);    // horizontal wander in px
-      var rotate = Math.round(-30 + rand() * 60);    // deg
-      html +=
-        '<span class="bg-emoji" style="left:' + left + '%; font-size:' + size + 'px; ' +
-        'animation-duration:' + duration + 's; animation-delay:' + delay + 's; ' +
-        '--drift:' + drift + 'px; --rot:' + rotate + 'deg;">' + emoji + '</span>';
+function spawnBgParticle(rand, emoji, scatterY) {
+  var w = window.innerWidth, h = window.innerHeight;
+  return {
+    emoji: emoji,
+    x: rand() * w,
+    y: scatterY ? rand() * h : h + 40,
+    size: 13 + rand() * 20, // smaller and softer - reads as an ambient sprinkle, not big cartoon icons
+    baseVy: -(0.22 + rand() * 0.45),
+    vx: 0, vy: 0,
+    drift: (rand() - 0.5) * 0.3,
+    rot: rand() * 360,
+    rotSpeed: (rand() - 0.5) * 0.5,
+    opacity: 0.28 + rand() * 0.4
+  };
+}
+
+function updateBgEmojiForSong(songId) {
+  if (songId === bgLastSongId) return;
+  bgLastSongId = songId;
+  if (!songId) { bgParticles = []; return; }
+  var rand = seededRandom(hashStringToSeed(songId));
+  var emoji = BG_EMOJI_POOL[Math.floor(rand() * BG_EMOJI_POOL.length)];
+  var particles = [];
+  for (var i = 0; i < BG_PARTICLE_COUNT; i++) particles.push(spawnBgParticle(rand, emoji, true));
+  bgParticles = particles;
+}
+
+function bgTick(now) {
+  requestAnimationFrame(bgTick);
+  if (!bgCtx || !bgCanvas || document.hidden) return;
+  if (now - bgLastFrameTime < BG_FRAME_MS) return;
+  bgLastFrameTime = now;
+
+  var w = window.innerWidth, h = window.innerHeight;
+  bgCtx.clearRect(0, 0, w, h);
+  if (!bgParticles.length) return;
+
+  bgCtx.textAlign = 'center';
+  bgCtx.textBaseline = 'middle';
+  bgCtx.filter = 'blur(' + BG_BLUR_PX + 'px)'; // soft/glowing rather than crisp clip-art
+
+  for (var i = 0; i < bgParticles.length; i++) {
+    var p = bgParticles[i];
+
+    // Ease toward its own gentle base drift...
+    p.vy += (p.baseVy - p.vy) * 0.02;
+    p.vx += (p.drift - p.vx) * 0.02;
+
+    // ...but the cursor pushes it away when nearby.
+    var dx = p.x - bgCursor.x, dy = p.y - bgCursor.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < BG_REPEL_RADIUS && dist > 0.01) {
+      var force = (1 - dist / BG_REPEL_RADIUS) * BG_REPEL_STRENGTH;
+      p.vx += (dx / dist) * force;
+      p.vy += (dy / dist) * force;
     }
-    layer.innerHTML = html;
-    layer.style.opacity = '1';
-  }, 400);
+
+    p.x += p.vx; p.y += p.vy; p.rot += p.rotSpeed;
+
+    if (p.y < -60) { p.y = h + 40; p.x = Math.random() * w; p.vx = 0; p.vy = 0; }
+    if (p.x < -60) p.x = w + 60;
+    if (p.x > w + 60) p.x = -60;
+
+    bgCtx.save();
+    bgCtx.globalAlpha = p.opacity;
+    bgCtx.translate(p.x, p.y);
+    bgCtx.rotate(p.rot * Math.PI / 180);
+    bgCtx.font = p.size + 'px sans-serif';
+    bgCtx.fillText(p.emoji, 0, 0);
+    bgCtx.restore();
+  }
 }
 
 // ── Live Reactions ────────────────────────────────────
@@ -3295,7 +3352,7 @@ function updateNowPlaying() {
     applyNowPlayingGlow(null);
   }
   pollReactions();
-  renderBackgroundEmojis(currentSongId());
+  updateBgEmojiForSong(currentSongId());
 }
 
 function updatePlayBtn() {
@@ -4251,6 +4308,9 @@ async function updateRequestBadge() {
 async function init() {
   // Theme button
   document.getElementById('themeToggle').textContent = getTheme() === 'dark' ? '\u2600\ufe0f' : '\ud83c\udf19';
+
+  // Animated background emoji particle field
+  initBgCanvas();
 
   // Background theme picker - mark the current selection, resume Aurora if it was left on
   updateBgThemeSelection();
