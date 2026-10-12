@@ -1704,6 +1704,21 @@ body.has-player-bar {
 }
 #pauseTeacherBtn:hover { opacity: 1; }
 
+/* Shown whenever the playlist can't be loaded or a change failed to save,
+   so a server problem is never mistaken for "the songs were deleted". */
+.sync-banner {
+  margin: 0 0 16px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  border: 1.5px solid var(--danger-border);
+  color: var(--danger-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.sync-banner a { color: inherit; text-decoration: underline; margin-left: 4px; }
+
 /* ═══════════════════════════════════════════════
    Animated Background Emojis — pure CSS keyframe
    animation (no JS animation loop at all), one emoji
@@ -1731,7 +1746,7 @@ body.has-player-bar {
   position: absolute;
   bottom: -12%;
   line-height: 1;
-  filter: blur(1.4px);
+  filter: blur(var(--depth-blur, 1.4px)) drop-shadow(0 0 4px var(--accent, transparent));
   animation-name: bg-emoji-float;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
@@ -1740,6 +1755,12 @@ body.has-player-bar {
 @keyframes bg-emoji-float {
   0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
   6%   { opacity: var(--peak-opacity, .45); }
+  /* Intermediate stops each with their own randomized horizontal offset
+     give a wavy, organic meander instead of a straight diagonal line -
+     the browser smoothly interpolates between them. */
+  25%  { transform: translate(var(--sway1, 0px), -25vh) rotate(calc(var(--rot, 0deg) * 0.3)); }
+  50%  { transform: translate(var(--sway2, 0px), -55vh) rotate(calc(var(--rot, 0deg) * 0.6)); }
+  75%  { transform: translate(var(--sway3, 0px), -85vh) rotate(calc(var(--rot, 0deg) * 0.85)); }
   94%  { opacity: var(--peak-opacity, .45); }
   100% { transform: translate(var(--drift, 0px), -125vh) rotate(var(--rot, 0deg)); opacity: 0; }
 }
@@ -2189,6 +2210,7 @@ body.has-player-bar {
 <div class="accent-bar"></div>
 
 <main class="main">
+  <div id="syncBanner" class="sync-banner" style="display:none;" role="alert" aria-live="polite"></div>
   <a href="index.html" class="back-link">&#8592; Back to classes</a>
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
     <h2 class="page-title" id="classTitle">Class</h2>
@@ -2497,6 +2519,14 @@ document.getElementById('classTitle').innerText =
 
 // ── State ────────────────────────────────────────────
 var playlist       = [];
+// Whether we have successfully READ the playlist from the server. Nothing
+// is ever saved until this is true - otherwise an empty/stale local copy
+// could overwrite the real playlist.
+var playlistLoaded = false;
+var syncLoadError  = null;
+var syncLoadFailCount = 0;
+var syncSaveError  = null;
+var lastLoadError  = '';
 var currentIndex   = -1;
 var isPlaying      = false;
 var ytPlayer       = null;
@@ -3208,18 +3238,32 @@ function updateBgEmojiForSong(songId) {
     var emoji = BG_EMOJI_POOL[Math.floor(rand() * BG_EMOJI_POOL.length)];
     var html = '';
     for (var i = 0; i < BG_PARTICLE_COUNT; i++) {
-      var left = (rand() * 100).toFixed(2);
-      var size = Math.round(13 + rand() * 22);       // 13-35px - small and soft
-      var duration = (16 + rand() * 16).toFixed(1);   // 16-32s per loop
-      var delay = (-rand() * duration).toFixed(1);    // stagger, already mid-flight on load
-      var drift = Math.round(-60 + rand() * 120);     // horizontal wander in px
-      var rotate = Math.round(-30 + rand() * 60);      // deg
-      var peakOpacity = (0.25 + rand() * 0.35).toFixed(2);
+      // Depth: 0 = far away, 1 = right up close. Correlating size, blur,
+      // speed and boldness to the same depth value is what actually sells
+      // the parallax illusion, rather than randomizing them independently.
+      var depth = rand();
+      var size     = Math.round(12 + depth * 28);           // 12-40px
+      var blur     = (2.6 - depth * 2.0).toFixed(2);          // far=blurrier, near=sharper
+      var duration = (30 - depth * 16 + rand() * 4).toFixed(1); // far=slower, near=faster
+      var peakOpacity = (0.18 + depth * 0.42).toFixed(2);     // far=dimmer, near=bolder
+
+      var left  = (rand() * 100).toFixed(2);
+      var delay = (-rand() * duration).toFixed(1);            // stagger, already mid-flight on load
+      var drift = Math.round(-60 + rand() * 120);
+      var rotate = Math.round(-30 + rand() * 60);
+      var sway1 = Math.round(-40 + rand() * 80);
+      var sway2 = Math.round(-55 + rand() * 110);
+      var sway3 = Math.round(-45 + rand() * 90);
+
+      // A rare sparkle mixed into the main emoji, for a bit of texture.
+      var glyph = (rand() < 0.12) ? '\u2728' : emoji;
+
       html +=
         '<span class="bg-emoji" style="left:' + left + '%; font-size:' + size + 'px; ' +
         'animation-duration:' + duration + 's; animation-delay:' + delay + 's; ' +
-        '--drift:' + drift + 'px; --rot:' + rotate + 'deg; --peak-opacity:' + peakOpacity + ';">' +
-        emoji + '</span>';
+        '--depth-blur:' + blur + 'px; --drift:' + drift + 'px; --rot:' + rotate + 'deg; ' +
+        '--sway1:' + sway1 + 'px; --sway2:' + sway2 + 'px; --sway3:' + sway3 + 'px; ' +
+        '--peak-opacity:' + peakOpacity + ';">' + glyph + '</span>';
     }
     layer.innerHTML = html;
     layer.style.opacity = '1';
@@ -3341,7 +3385,9 @@ function render() {
   div.innerHTML = '';
 
   if (!playlist.length) {
-    div.innerHTML = '<div class="empty-state">No songs yet. Your teacher has not added any songs to this playlist.</div>';
+    div.innerHTML = playlistLoaded
+      ? '<div class="empty-state">No songs yet. Your teacher has not added any songs to this playlist.</div>'
+      : '<div class="empty-state">Can\'t load the playlist from the server right now - your songs have <b>not</b> been deleted. Retrying automatically...</div>';
     return;
   }
 
@@ -3423,6 +3469,11 @@ async function addSong() {
     return;
   }
 
+  if (!playlistLoaded) {
+    if (feedback) { feedback.style.color = 'var(--danger-text)'; feedback.textContent = "The playlist hasn't loaded from the server yet - nothing was added. See the warning at the top of the page."; }
+    return;
+  }
+
   // Lock UI
   input.value = '';
   if (btn)      { btn.disabled = true; btn.textContent = 'Adding...'; }
@@ -3444,24 +3495,17 @@ async function addSong() {
   if (feedback) { feedback.style.color = 'var(--text-muted)'; feedback.textContent = 'Saving...'; }
 
   // Save to server
-  try {
-    lastSnap = JSON.stringify(playlist);
-    var saveRes = await fetch(apiUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: lastSnap
-    });
-    if (saveRes.ok) {
-      if (feedback) { feedback.style.color = 'var(--green)'; feedback.textContent = 'Added: ' + song.title; }
-    } else {
-      if (feedback) { feedback.style.color = 'var(--accent)'; feedback.textContent = 'Saved locally (server error ' + saveRes.status + ')'; }
-    }
-  } catch(e) {
-    if (feedback) { feedback.style.color = 'var(--accent)'; feedback.textContent = 'Saved locally (offline - will sync)'; }
+  lastSnap = JSON.stringify(playlist);
+  var saved = await savePlaylist(lastSnap);
+  if (saved.ok) {
+    if (feedback) { feedback.style.color = 'var(--green)'; feedback.textContent = 'Added: ' + song.title; }
+  } else if (feedback) {
+    feedback.style.color = 'var(--danger-text)';
+    feedback.textContent = 'NOT saved to the server (' + (saved.error || 'error') + ') - this song will disappear when the page refreshes.';
   }
 
   if (btn) { btn.disabled = false; btn.textContent = 'Add Song'; }
-  setTimeout(function() { if (feedback) feedback.textContent = ''; }, 4000);
+  setTimeout(function() { if (feedback) feedback.textContent = ''; }, saved.ok ? 4000 : 15000);
 }
 
 async function deleteSong(index) {
@@ -3492,9 +3536,9 @@ async function deleteSong(index) {
   // Stop poll, save, restart poll
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   lastSnap = JSON.stringify(playlist);
-  try {
-    await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap });
-  } catch(e) {}
+  // Deleting the very last song legitimately empties the playlist, so it
+  // has to say so explicitly or the server's blank-save guard refuses it.
+  await savePlaylist(lastSnap, playlist.length === 0);
   startPolling();
 }
 
@@ -3513,18 +3557,69 @@ async function deleteSelected() {
   });
   render(); updateNowPlaying(); updatePlayBtn();
   lastSnap = JSON.stringify(playlist);
-  try { await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap }); } catch(e) {}
+  await savePlaylist(lastSnap, playlist.length === 0);
   startPolling();
 }
 
 // ── Server Sync ──────────────────────────────────────
+// Returns the songs array, or null if the playlist could NOT be loaded.
+// (It used to return [] on any failure, which made a server error look
+// identical to "no songs yet" - i.e. like the songs had been deleted.)
 async function loadPlaylist() {
   try {
     var res = await fetch(apiUrl, { cache: 'no-store' });
-    if (!res.ok) return [];
+    if (!res.ok) { lastLoadError = 'error ' + res.status; return null; }
     var data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch(e) { return []; }
+    if (!Array.isArray(data)) { lastLoadError = 'unexpected response'; return null; }
+    lastLoadError = '';
+    return data;
+  } catch(e) { lastLoadError = 'no connection'; return null; }
+}
+
+function updateSyncBanner() {
+  var el = document.getElementById('syncBanner');
+  if (!el) return;
+  var msg = '';
+  if (syncSaveError) {
+    msg = '\u26a0 Your last change did NOT save to the server (' + syncSaveError + '). It will disappear when the page refreshes.';
+  } else if (!playlistLoaded || syncLoadFailCount >= 2) {
+    msg = '\u26a0 Can\'t reach the playlist server right now' + (syncLoadError ? ' (' + syncLoadError + ')' : '') +
+          '. Your songs haven\'t been deleted - retrying automatically...';
+  }
+  el.textContent = '';
+  if (!msg) { el.style.display = 'none'; return; }
+  el.appendChild(document.createTextNode(msg + ' '));
+  var a = document.createElement('a');
+  a.href = apiUrl + '?diag=1'; a.target = '_blank'; a.rel = 'noopener';
+  a.textContent = 'Run diagnostic';
+  el.appendChild(a);
+  el.style.display = '';
+}
+
+// The one place the playlist is written. Refuses to save until the real
+// playlist has been read, checks the server's response (a 502/503 is not a
+// thrown error, so the old try/catch never noticed), and reports failures
+// loudly instead of pretending the change was kept.
+async function savePlaylist(bodyStr, allowEmpty, quiet) {
+  if (!playlistLoaded) return { ok: false, blocked: true, error: "playlist hasn't loaded yet" };
+  var result;
+  try {
+    var res = await fetch(apiUrl + (allowEmpty ? '?confirm=true' : ''), {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: bodyStr
+    });
+    result = res.ok ? { ok: true } : { ok: false, error: 'error ' + res.status };
+  } catch (e) {
+    result = { ok: false, error: 'no connection' };
+  }
+  if (!quiet) { syncSaveError = result.ok ? null : result.error; updateSyncBanner(); }
+  else if (!result.ok) { console.warn('Background playlist save failed:', result.error); }
+  return result;
+}
+
+function requirePlaylistLoaded() {
+  if (playlistLoaded) return true;
+  alert("The playlist hasn't loaded from the server yet, so changes can't be saved safely right now. Please wait a few seconds (see the warning at the top of the page) and try again.");
+  return false;
 }
 
 function playlistsMatch(a, b) {
@@ -3537,6 +3632,19 @@ async function pollServer() {
   if (document.hidden) return;
   try {
     var next = await loadPlaylist();
+    if (next === null) {
+      // Couldn't reach the server - that is NOT an empty playlist. Keep
+      // whatever we're showing and flag the problem.
+      syncLoadFailCount++;
+      syncLoadError = lastLoadError;
+      updateSyncBanner();
+      return;
+    }
+    var justRecovered = !playlistLoaded;
+    playlistLoaded = true;
+    syncLoadFailCount = 0;
+    syncLoadError = null;
+    updateSyncBanner();
     // Never replace a non-empty playlist with empty (server glitch guard)
     if (next.length === 0 && playlist.length > 0) return;
     // Filter out recently deleted songs
@@ -3545,7 +3653,7 @@ async function pollServer() {
       next = next.filter(function(s) { return !deletedIds.has(s.id); });
       if (next.length < before) {
         // Re-push corrected list to server
-        fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(function(){});
+        savePlaylist(JSON.stringify(next), next.length === 0, true);
       }
     }
     if (!playlistsMatch(playlist, next)) {
@@ -3564,6 +3672,8 @@ async function pollServer() {
         }
       }
       render(); updateNowPlaying(); updatePlayBtn(); renderLikedPanel();
+    } else if (justRecovered) {
+      render(); updateNowPlaying(); updatePlayBtn(); renderLikedPanel();
     }
   } catch(e) {}
 }
@@ -3575,6 +3685,7 @@ function startPolling() {
 
 // Save on leave
 window.addEventListener('beforeunload', function() {
+  if (!playlistLoaded) return; // never write anything we haven't first read
   var snap = JSON.stringify(playlist);
   if (snap === lastSnap) return;
   try { navigator.sendBeacon && navigator.sendBeacon(apiUrl, new Blob([snap], { type: 'application/json' })); } catch(e) {}
@@ -3634,12 +3745,16 @@ function renderRecent() {
 function playOrAdd(id, title) {
   var idx = playlist.findIndex(function(s) { return s.id === id; });
   if (idx >= 0) { play(idx); return; }
+  // Only a teacher may add to the shared class playlist, and only once the
+  // real playlist has loaded - otherwise a student's stale or empty local
+  // copy could overwrite the server's playlist with just this one song.
+  if (!teacherMode || !playlistLoaded) return;
   if (bannedIds.has(id)) return;
   playlist.push({ id: id, title: title });
   render();
   play(playlist.length - 1);
   lastSnap = JSON.stringify(playlist);
-  fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap }).catch(function(){});
+  savePlaylist(lastSnap);
 }
 
 // ── Teacher Unlock ───────────────────────────────────
@@ -3692,11 +3807,12 @@ async function pasteSongs() {
   var songs = [];
   try { songs = JSON.parse(localStorage.getItem('pvs_clipboard') || '[]'); } catch(e) {}
   if (!songs.length) return;
+  if (!requirePlaylistLoaded()) return;
   var existing = new Set(playlist.map(function(s) { return s.id; }));
   songs.forEach(function(s) { if (!existing.has(s.id)) playlist.push({ id: s.id, title: s.title }); });
   render(); updateNowPlaying();
   lastSnap = JSON.stringify(playlist);
-  try { await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap }); } catch(e) {}
+  await savePlaylist(lastSnap);
 }
 
 // ── Export / Import Playlist ─────────────────────────
@@ -3723,6 +3839,7 @@ async function importPlaylist(event) {
   var file = input.files && input.files[0];
   input.value = ''; // allow re-selecting the same file later
   if (!file) return;
+  if (!requirePlaylistLoaded()) return;
 
   var text;
   try {
@@ -3780,14 +3897,9 @@ async function importPlaylist(event) {
   playlist = finalPlaylist;
   render(); updateNowPlaying();
   lastSnap = JSON.stringify(playlist);
-  try {
-    var res = await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: lastSnap });
-    if (!res.ok) {
-      var msg = await res.text().catch(function(){ return ''; });
-      alert('Saved locally, but the server rejected the save: ' + (msg || res.status));
-    }
-  } catch(e) {
-    alert('Saved locally, but could not reach the server (offline?). It will not sync until you reconnect and save again.');
+  var importSaved = await savePlaylist(lastSnap);
+  if (!importSaved.ok) {
+    alert('The import did NOT save to the server (' + (importSaved.error || 'error') + '). It will disappear when the page refreshes.');
   }
 }
 
@@ -4167,14 +4279,15 @@ function setAdminTheme() {
 }
 
 async function adminClearCurrent() {
+  if (!requirePlaylistLoaded()) return;
   if (!confirm('Clear the current playlist?')) return;
   playlist = []; currentIndex = -1; isPlaying = false;
   if (ytPlayer) { try { ytPlayer.stopVideo(); } catch(e) {} }
   stopProgressTimer(); setProgress(0);
   lastSnap = '[]';
-  await fetch(apiUrl + '?confirm=true', { method:'PUT', headers:{'Content-Type':'application/json'}, body:'[]' });
+  var cleared = await savePlaylist('[]', true);
   render(); updateNowPlaying(); updatePlayBtn();
-  alert('Playlist cleared.');
+  alert(cleared.ok ? 'Playlist cleared.' : 'The playlist was NOT cleared on the server (' + (cleared.error || 'error') + ').');
 }
 
 async function adminClearAll() {
@@ -4196,7 +4309,7 @@ function adminRemoveDupes() {
   if (currentIndex >= playlist.length) currentIndex = playlist.length - 1;
   render(); updateNowPlaying();
   lastSnap = JSON.stringify(playlist);
-  fetch(apiUrl,{method:'PUT',headers:{'Content-Type':'application/json'},body:lastSnap}).catch(function(){});
+  savePlaylist(lastSnap);
   alert('Removed ' + removed + ' duplicate(s).');
 }
 
@@ -4237,7 +4350,7 @@ async function backfillTitles() {
   if (changed) {
     render(); updateNowPlaying();
     lastSnap = JSON.stringify(playlist);
-    fetch(apiUrl,{method:'PUT',headers:{'Content-Type':'application/json'},body:lastSnap}).catch(function(){});
+    savePlaylist(lastSnap, false, true);
   }
 }
 
@@ -4295,9 +4408,16 @@ async function init() {
     });
   }
 
-  // Load playlist from server
-  playlist = await loadPlaylist();
+  // Load playlist from server. A failed load is NOT the same as an empty
+  // playlist - track the difference so a server problem can never be
+  // mistaken for "no songs", and nothing is saved over the real playlist
+  // until it has been successfully read.
+  var firstLoad = await loadPlaylist();
+  playlistLoaded = (firstLoad !== null);
+  playlist = firstLoad || [];
+  if (!playlistLoaded) { syncLoadError = lastLoadError; syncLoadFailCount = 1; }
   lastSnap = JSON.stringify(playlist);
+  updateSyncBanner();
 
   // Render
   render();
