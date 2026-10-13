@@ -4029,6 +4029,15 @@ function startNorm() {
 
 // ── Song Analytics ───────────────────────────────────
 async function trackPlay(song) {
+  // Counts toward the home page's Song of the Week. Fire-and-forget: it
+  // must never slow down or interrupt playback, and the server ignores
+  // anything that isn't a real song in this class's playlist.
+  try {
+    fetch('/api/song-of-the-week/' + encodeURIComponent(classParam), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ songId: song.id, clientId: getClientId() })
+    }).catch(function() {});
+  } catch(e) {}
   try { await fetch('/api/analytics/' + encodeURIComponent(classParam), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ class: classParam, songId: song.id, songTitle: song.title || 'YouTube Video' }) }); } catch(e) {}
 }
 
