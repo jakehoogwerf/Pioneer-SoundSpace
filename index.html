@@ -6,6 +6,47 @@
   <title>PVS SoundSpace</title>
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── Song of the Week card ── */
+    .sotw-card {
+      display: flex; align-items: center; gap: 16px;
+      width: 100%; max-width: 840px; margin: 0 0 28px; padding: 14px 18px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow);
+      color: var(--text); text-decoration: none; position: relative; overflow: hidden;
+      transition: transform .2s cubic-bezier(.4,0,.2,1), box-shadow .2s, border-color .2s;
+    }
+    .sotw-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent-lt) 100%);
+    }
+    .sotw-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--accent); }
+    .sotw-thumb {
+      position: relative; width: 112px; aspect-ratio: 16 / 10; flex-shrink: 0;
+      border-radius: 10px; overflow: hidden; background: var(--bg-alt);
+      box-shadow: 0 2px 8px rgba(0,0,0,.18);
+    }
+    .sotw-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .sotw-crown { position: absolute; top: 3px; left: 6px; font-size: 18px; filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
+    .sotw-body { min-width: 0; flex: 1; }
+    .sotw-label {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 800;
+      letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 3px;
+    }
+    .sotw-title {
+      font-size: 17px; font-weight: 700; line-height: 1.25;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .sotw-meta { margin-top: 4px; font-size: 12.5px; font-weight: 600; color: var(--text-subtle); }
+    .sotw-also { margin-top: 3px; font-size: 11.5px; font-weight: 600; color: var(--text-subtle); opacity: .85; }
+    .sotw-go { font-size: 12px; font-weight: 800; color: var(--accent); white-space: nowrap; }
+    @media (max-width: 560px) {
+      .sotw-card { padding: 12px; gap: 12px; margin-bottom: 20px; }
+      .sotw-thumb { width: 84px; }
+      .sotw-title { font-size: 15px; }
+      .sotw-go { display: none; }
+    }
+  </style>
   <script>
     (function(){
       var f = localStorage.getItem('pvs_force_theme');
@@ -99,6 +140,17 @@
     <h2 class="page-title">Select a Class</h2>
     <p class="page-subtitle">Choose a class to open its playlist and start playing.</p>
   </div>
+
+  <a id="sotwCard" class="sotw-card" href="#" style="display:none;">
+    <div class="sotw-thumb"><img id="sotwThumb" alt=""><span class="sotw-crown">&#128081;</span></div>
+    <div class="sotw-body">
+      <div class="sotw-label" id="sotwLabel"></div>
+      <div class="sotw-title" id="sotwTitle"></div>
+      <div class="sotw-meta" id="sotwMeta"></div>
+      <div class="sotw-also" id="sotwAlso"></div>
+    </div>
+    <span class="sotw-go" id="sotwGo"></span>
+  </a>
 
   <div class="grid home-grid">
     <a href="class.html?class=kangaroos" class="card home-card">
@@ -357,6 +409,54 @@ if (getBgTheme() === 'aurora') {
   auroraHue = parseInt(localStorage.getItem('pvs_bg_hue') || '0', 10) || 0;
   startAurora();
 }
+
+// ── Song of the Week ────────────────────────────────────
+// Purely a bonus: if the server can't be reached or there's no data yet,
+// the card simply stays hidden - it never shows an error on the home page.
+var SOTW_CLASSES = {
+  kangaroos: ['\ud83e\udd98', 'Kangaroos'], bilby: ['\ud83d\udc2d', 'Bilby'],
+  swans: ['\ud83e\udda2', 'Swans'], numbats: ['\ud83d\udc3f\ufe0f', 'Numbats'],
+  bobtails: ['\ud83e\udd8e', 'Bobtails'], karak: ['\ud83e\udd9c', 'Karak'],
+  wombats: ['\ud83d\udc3b', 'Wombats'], PE: ['\u26bd', 'PE Class']
+};
+
+async function loadSongOfTheWeek() {
+  try {
+    var res = await fetch('/api/song-of-the-week', { cache: 'no-store' });
+    if (!res.ok) return;
+    var d = await res.json();
+    if (!d || !d.winner || !/^[A-Za-z0-9_-]{1,32}$/.test(String(d.winner.songId))) return;
+
+    var w = d.winner;
+    var isCurrent = d.basis === 'current';
+    var cls = SOTW_CLASSES[w.topClass] || null;
+    var plural = function(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); };
+
+    var card = document.getElementById('sotwCard');
+    document.getElementById('sotwThumb').src = 'https://img.youtube.com/vi/' + encodeURIComponent(w.songId) + '/mqdefault.jpg';
+    document.getElementById('sotwLabel').textContent = isCurrent ? '\ud83c\udfc6 Song of the Week' : '\ud83c\udfc6 Last Week\u2019s Song of the Week';
+    document.getElementById('sotwTitle').textContent = w.title || 'YouTube Video';
+
+    var meta = 'Played ' + plural(w.plays, 'time') + (isCurrent ? ' so far this week' : ' last week');
+    if (w.classes > 1) meta += ' by ' + w.classes + ' classes';
+    if (cls) meta += ' \u00b7 most loved by ' + cls[0] + ' ' + cls[1];
+    document.getElementById('sotwMeta').textContent = meta;
+
+    var also = (d.runnersUp || []).slice(0, 2).map(function(s) { return s.title + ' (' + s.plays + ')'; });
+    document.getElementById('sotwAlso').textContent = also.length ? 'Also high on the charts: ' + also.join(' \u00b7 ') : '';
+
+    // Clicking opens the playlist of the class that played it the most.
+    if (cls) {
+      card.href = 'class.html?class=' + encodeURIComponent(w.topClass);
+      document.getElementById('sotwGo').textContent = 'Open ' + cls[1] + '\u2019 playlist \u2192';
+    } else {
+      card.removeAttribute('href');
+      document.getElementById('sotwGo').textContent = '';
+    }
+    card.style.display = '';
+  } catch (e) {}
+}
+loadSongOfTheWeek();
 </script>
 
 </body>
