@@ -2392,17 +2392,7 @@ body.has-player-bar {
     <div class="admin-modal-body">
       <div class="admin-section">
         <h3>&#128273; Password</h3>
-        <div class="admin-field">
-          <label>Teacher Password</label>
-          <div class="admin-input-group">
-            <input type="password" id="adminPwdInput">
-            <button class="btn btn-sm btn-outline" id="adminPwdToggle" onclick="toggleAdminPwdVis()">Show</button>
-          </div>
-        </div>
-        <div class="admin-actions">
-          <button class="btn btn-sm btn-gold" onclick="saveAdminPassword()">Save Password</button>
-          <button class="btn btn-sm btn-outline" onclick="resetPassword()">Reset to Default</button>
-        </div>
+        <p style="font-size:12.5px;line-height:1.5;color:var(--text-subtle);">The teacher password is built into the site, so it is the same on every device. Changing it means updating the site's code.</p>
       </div>
       <div class="admin-section">
         <h3>&#127925; Playlist Controls</h3>
@@ -2472,8 +2462,14 @@ body.has-player-bar {
    ===================================================== */
 
 // ── Config ──────────────────────────────────────────
-var MASTER_PASSWORD = 'Jakehoogy_07';
-var DEFAULT_PASSWORD = '2222';
+// Passwords are stored only as SHA-256 hashes, never as plain text, so they
+// can't simply be read out of the page source. The teacher password is the
+// same on every device - it is no longer possible to override it per
+// browser (that only ever changed it on one device and left every other
+// device, including students', on the old password).
+var TEACHER_PASSWORD_HASH = '6a27eece1c1658b237aede5c6c2b8af51d235ca08b2f7963b67d99caa7a12395';
+var MASTER_PASSWORD_HASH  = 'e64f419b46d829edb4edd38274e2a9f5c2643c2ac6aaceb7468305e5e40cfe0e';
+try { localStorage.removeItem('pvs_teacher_password'); } catch (e) {} // clear stale per-browser overrides
 var POLL_MS = 4000;
 var ALL_CLASSES = ['kangaroos','bilby','swans','numbats','bobtails','karak','wombats','PE'];
 
@@ -2541,7 +2537,10 @@ var isMuted        = false;
 var likedIds       = loadLikedIds();
 var likedModeOn    = localStorage.getItem('pvs_liked_mode_' + classParam) === 'true';
 
-var teacherMode    = sessionStorage.getItem('pvs_teacher_' + classParam) === 'true';
+// The "v2" in the key means every tab that was unlocked under the OLD
+// password is locked again after this change, rather than staying unlocked.
+var TEACHER_SESSION_KEY = 'pvs_teacher_v2_' + classParam;
+var teacherMode    = sessionStorage.getItem(TEACHER_SESSION_KEY) === 'true';
 var studentMode    = localStorage.getItem('pvs_student_mode') !== 'false';
 var focusMode      = localStorage.getItem('pvs_focus_mode') === 'true';
 var classPaused    = false;
@@ -2580,8 +2579,89 @@ function formatTime(s) {
   return m + ':' + (sec < 10 ? '0' : '') + sec;
 }
 
-function getPassword() {
-  return localStorage.getItem('pvs_teacher_password') || DEFAULT_PASSWORD;
+// ── Passwords ────────────────────────────────────────
+async function sha256Hex(text) {
+  var buf = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.prototype.map.call(new Uint8Array(buf), function(b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+}
+
+// Too many wrong guesses locks password entry on this device for a while.
+// (This only slows down someone guessing at the prompt - see the note on
+// limits: it can't stop a determined person with browser developer tools.)
+var PW_MAX_ATTEMPTS = 5;
+var PW_LOCK_MS = 5 * 60 * 1000;
+function pwLockRemainingMs() {
+  var until = parseInt(localStorage.getItem('pvs_pw_lock_until') || '0', 10) || 0;
+  return Math.max(0, until - Date.now());
+}
+function pwRecordFailure() {
+  var n = (parseInt(localStorage.getItem('pvs_pw_fails') || '0', 10) || 0) + 1;
+  if (n >= PW_MAX_ATTEMPTS) { localStorage.setItem('pvs_pw_lock_until', String(Date.now() + PW_LOCK_MS)); n = 0; }
+  localStorage.setItem('pvs_pw_fails', String(n));
+}
+function pwClearFailures() {
+  localStorage.removeItem('pvs_pw_fails');
+  localStorage.removeItem('pvs_pw_lock_until');
+}
+
+// A password box that MASKS what's typed (window.prompt shows it in plain
+// text - visible to the whole class if the screen is on a projector).
+function promptPassword(message) {
+  return new Promise(function(resolve) {
+    if (document.getElementById('pwModal')) { resolve(null); return; }
+    var overlay = document.createElement('div');
+    overlay.id = 'pwModal';
+    overlay.className = 'admin-overlay';
+    overlay.innerHTML =
+      '<div class="admin-backdrop"></div>' +
+      '<div class="admin-modal" style="max-width:360px;">' +
+        '<div class="admin-modal-header"><h2 class="pw-title"></h2></div>' +
+        '<div class="admin-modal-body">' +
+          '<div class="admin-field"><input type="password" class="pw-input" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;"></div>' +
+          '<div class="admin-actions"><button class="btn btn-sm btn-gold pw-ok">Unlock</button><button class="btn btn-sm btn-outline pw-cancel">Cancel</button></div>' +
+        '</div>' +
+      '</div>';
+    overlay.querySelector('.pw-title').textContent = message;
+    document.body.appendChild(overlay);
+    var input = overlay.querySelector('.pw-input');
+    function done(val) { document.removeEventListener('keydown', onKey, true); overlay.remove(); resolve(val); }
+    function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); done(null); } }
+    document.addEventListener('keydown', onKey, true);
+    overlay.querySelector('.pw-ok').addEventListener('click', function() { done(input.value); });
+    overlay.querySelector('.pw-cancel').addEventListener('click', function() { done(null); });
+    overlay.querySelector('.admin-backdrop').addEventListener('click', function() { done(null); });
+    input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); done(input.value); } });
+    setTimeout(function() { input.focus(); }, 30);
+  });
+}
+
+// Asks for a password and checks it. masterOnly=true accepts only the
+// master password; otherwise only the teacher password is accepted.
+async function askPassword(message, masterOnly) {
+  var wait = pwLockRemainingMs();
+  if (wait > 0) {
+    alert('Too many wrong attempts. Please try again in ' + Math.ceil(wait / 60000) + ' minute(s).');
+    return false;
+  }
+  var pwd = await promptPassword(message);
+  if (!pwd) return false;
+  if (!(window.crypto && window.crypto.subtle)) {
+    alert("This browser can't check passwords on this page (it needs a secure https connection).");
+    return false;
+  }
+  var h = await sha256Hex(String(pwd).trim());
+  // Teacher Tools take the TEACHER password only. The master password is
+  // for the admin settings only - and from there Teacher Mode can still be
+  // switched on, so there is always a way back in if the teacher password
+  // is ever forgotten.
+  var ok = masterOnly ? (h === MASTER_PASSWORD_HASH) : (h === TEACHER_PASSWORD_HASH);
+  if (!ok) {
+    pwRecordFailure();
+    alert(masterOnly ? 'Incorrect master password.' : 'Incorrect password.');
+    return false;
+  }
+  pwClearFailures();
+  return true;
 }
 
 // ── Theme ────────────────────────────────────────────
@@ -3758,26 +3838,29 @@ function playOrAdd(id, title) {
 }
 
 // ── Teacher Unlock ───────────────────────────────────
-function unlockTeacher() {
+async function unlockTeacher() {
   if (teacherMode) {
+    // Locking the tools turns this device back into an ordinary viewer, so
+    // it would be stopped by the same "paused" screen the students see if
+    // the class is still paused. Offer to resume first.
+    if ((classPaused || classLocked) &&
+        confirm('Playback is still PAUSED for the whole class.\n\nOK = resume playback, then lock the tools\nCancel = keep it paused and lock the tools')) {
+      await togglePauseAll();
+    }
     teacherMode = false;
-    sessionStorage.setItem('pvs_teacher_' + classParam, 'false');
+    sessionStorage.setItem(TEACHER_SESSION_KEY, 'false');
     applyTeacherUI(); updatePauseUI(); render(); return;
   }
-  var pwd = window.prompt('Enter teacher password:');
-  if (!pwd) return;
-  if (pwd !== getPassword() && pwd !== MASTER_PASSWORD) { alert('Incorrect password.'); return; }
+  if (!(await askPassword('Teacher password', false))) return;
   teacherMode = true;
-  sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
+  sessionStorage.setItem(TEACHER_SESSION_KEY, 'true');
   applyTeacherUI(); updatePasteBtn(); updatePauseUI(); render();
 }
 
-function unlockFromOverlay() {
-  var pwd = window.prompt('Enter master password:');
-  if (!pwd) return;
-  if (pwd !== MASTER_PASSWORD && pwd !== getPassword()) { alert('Incorrect password.'); return; }
+async function unlockFromOverlay() {
+  if (!(await askPassword('Teacher password', false))) return;
   teacherMode = true;
-  sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
+  sessionStorage.setItem(TEACHER_SESSION_KEY, 'true');
   applyTeacherUI(); updatePauseUI();
 }
 
@@ -3911,7 +3994,11 @@ async function importPlaylist(event) {
 // student could press play again after a plain pause; combining them
 // closes that gap with a single button.
 async function togglePauseAll() {
-  var next = !classPaused;
+  // Decide from the SAME condition the button label and the "paused" screen
+  // use (paused OR locked). It used to look at "paused" alone, so a class
+  // left in the old "locked" state showed "Resume All" but the first click
+  // did the opposite of what the label said.
+  var next = !(classPaused || classLocked);
   classPaused = next;
   classLocked = next;
   try { await fetch(pauseApiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paused: classPaused, locked: classLocked }) }); } catch(e) {}
@@ -4222,12 +4309,8 @@ function onOnline() {
 // ── Admin Panel ──────────────────────────────────────
 var analyticsPollTimer = null;
 
-function openAdmin() {
-  var pwd = window.prompt('Enter master password:');
-  if (!pwd || (pwd !== MASTER_PASSWORD)) { alert('Incorrect master password.'); return; }
-  document.getElementById('adminPwdInput').value = getPassword();
-  document.getElementById('adminPwdInput').type = 'password';
-  document.getElementById('adminPwdToggle').textContent = 'Show';
+async function openAdmin() {
+  if (!(await askPassword('Master password', true))) return;
   document.getElementById('adminTeacherToggle').checked = teacherMode;
   document.getElementById('adminStudentToggle').checked = studentMode;
   document.getElementById('adminFocusToggle').checked   = focusMode;
@@ -4242,29 +4325,9 @@ function closeAdmin() {
   if (analyticsPollTimer) { clearInterval(analyticsPollTimer); analyticsPollTimer = null; }
 }
 
-function toggleAdminPwdVis() {
-  var inp = document.getElementById('adminPwdInput');
-  var btn = document.getElementById('adminPwdToggle');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-  btn.textContent = inp.type === 'password' ? 'Show' : 'Hide';
-}
-
-function saveAdminPassword() {
-  var pwd = document.getElementById('adminPwdInput').value.trim();
-  if (!pwd) { alert('Password cannot be empty.'); return; }
-  localStorage.setItem('pvs_teacher_password', pwd);
-  alert('Password saved.');
-}
-
-function resetPassword() {
-  localStorage.setItem('pvs_teacher_password', DEFAULT_PASSWORD);
-  document.getElementById('adminPwdInput').value = DEFAULT_PASSWORD;
-  alert('Reset to default: ' + DEFAULT_PASSWORD);
-}
-
 function toggleAdminTeacher() {
   teacherMode = document.getElementById('adminTeacherToggle').checked;
-  sessionStorage.setItem('pvs_teacher_' + classParam, teacherMode ? 'true' : 'false');
+  sessionStorage.setItem(TEACHER_SESSION_KEY, teacherMode ? 'true' : 'false');
   if (!teacherMode) selectedSongs.clear();
   applyTeacherUI(); if (teacherMode) updatePasteBtn(); updatePauseUI(); render();
 }
