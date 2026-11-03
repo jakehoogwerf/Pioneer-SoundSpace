@@ -2473,7 +2473,8 @@ body.has-player-bar {
 
 // ── Config ──────────────────────────────────────────
 var MASTER_PASSWORD = 'Jakehoogy_07';
-var DEFAULT_PASSWORD = '2222';
+var DEFAULT_PASSWORD = '1537';
+var TEACHER_PWD_KEY = 'pvs_teacher_password_v2'; // new key so previously saved passwords no longer work
 var POLL_MS = 4000;
 var ALL_CLASSES = ['kangaroos','bilby','swans','numbats','bobtails','karak','wombats','PE'];
 
@@ -2581,7 +2582,8 @@ function formatTime(s) {
 }
 
 function getPassword() {
-  return localStorage.getItem('pvs_teacher_password') || DEFAULT_PASSWORD;
+  try { localStorage.removeItem('pvs_teacher_password'); } catch (e) {}
+  return localStorage.getItem(TEACHER_PWD_KEY) || DEFAULT_PASSWORD;
 }
 
 // ── Theme ────────────────────────────────────────────
@@ -3766,16 +3768,16 @@ function unlockTeacher() {
   }
   var pwd = window.prompt('Enter teacher password:');
   if (!pwd) return;
-  if (pwd !== getPassword() && pwd !== MASTER_PASSWORD) { alert('Incorrect password.'); return; }
+  if (pwd !== getPassword()) { alert('Incorrect password.'); return; }
   teacherMode = true;
   sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
   applyTeacherUI(); updatePasteBtn(); updatePauseUI(); render();
 }
 
 function unlockFromOverlay() {
-  var pwd = window.prompt('Enter master password:');
+  var pwd = window.prompt('Enter teacher password:');
   if (!pwd) return;
-  if (pwd !== MASTER_PASSWORD && pwd !== getPassword()) { alert('Incorrect password.'); return; }
+  if (pwd !== getPassword()) { alert('Incorrect password.'); return; }
   teacherMode = true;
   sessionStorage.setItem('pvs_teacher_' + classParam, 'true');
   applyTeacherUI(); updatePauseUI();
@@ -4252,12 +4254,12 @@ function toggleAdminPwdVis() {
 function saveAdminPassword() {
   var pwd = document.getElementById('adminPwdInput').value.trim();
   if (!pwd) { alert('Password cannot be empty.'); return; }
-  localStorage.setItem('pvs_teacher_password', pwd);
+  localStorage.setItem(TEACHER_PWD_KEY, pwd);
   alert('Password saved.');
 }
 
 function resetPassword() {
-  localStorage.setItem('pvs_teacher_password', DEFAULT_PASSWORD);
+  localStorage.setItem(TEACHER_PWD_KEY, DEFAULT_PASSWORD);
   document.getElementById('adminPwdInput').value = DEFAULT_PASSWORD;
   alert('Reset to default: ' + DEFAULT_PASSWORD);
 }
